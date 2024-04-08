@@ -3,10 +3,12 @@
 #    https://tkdocs.com/
 #    https://docs.python.org/3/library/tk.html
 
-# NOTES:
-# - All buttons, text boxes, etc. are called widgets
-# - Owner of all widgets are a window, (there is a heirarchy)
+""" NOTES:
 
+- All buttons, text boxes, etc. are called widgets
+- Owner of all widgets are a window, (there is a heirarchy)
+
+"""
 
 from tkinter import *
 
