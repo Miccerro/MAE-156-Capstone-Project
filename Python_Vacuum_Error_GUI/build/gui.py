@@ -19,7 +19,7 @@ def relative_to_assets(path: str) -> Path:
 
 
 window = Tk()
-window.title("Pookie")
+window.title("API ERROR")
 
 window.geometry("303x376")
 window.configure(bg = "#1F1F1F")
