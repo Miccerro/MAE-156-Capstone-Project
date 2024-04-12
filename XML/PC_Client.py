@@ -67,7 +67,7 @@ while True:
         root = ET.fromstring(xml_message)
         running = root.get('Running')
         print("Running:", running)
-        print("This proves that we can parse xml messages")
+        print("This proves that we can parse xml messages. We can place a command here to execute something, like the next step would be to move the motors away from reamin area")
 
 #This is a simple example of pasring XML messages. Will need to start learning the order
 #We can already start psuedocode to layout how we will respond to certain messages. Need aspecific step by step

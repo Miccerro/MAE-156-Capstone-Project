@@ -56,8 +56,8 @@ while True:
         response = "<Sequence Name='Ream Anode' Running='true' LastReturnResult='' />"
         client_socket.send(response.encode())
 
-        # Wait for 8 seconds
-        time.sleep(8)
+        # Wait for 4 seconds
+        time.sleep(4)
         # Send the response
         response = "<Sequence Name='Ream Anode' Running='complete' LastReturnResult='' />"
         client_socket.send(response.encode())
