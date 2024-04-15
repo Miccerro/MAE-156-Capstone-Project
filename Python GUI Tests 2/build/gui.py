@@ -19,6 +19,7 @@ def relative_to_assets(path: str) -> Path:
 
 
 window = Tk()
+window.title("API")
 
 window.geometry("774x556")
 window.configure(bg = "#1F1F1F")
@@ -83,13 +84,23 @@ image_6 = canvas.create_image(
     image=image_image_6
 )
 
-button_image_1 = PhotoImage(
-    file=relative_to_assets("button_1.png"))
+###### BUTTON FOR PLC CONNECT ######
+#Load Images 
+button_image_1 = PhotoImage(file=relative_to_assets("button_1.png")) # Connect image
+button_image_1_alt = PhotoImage(file=relative_to_assets("button_1_opposite.png"))  # Green Connected image
+# function for button toggle between connect and connceted images
+def toggle_button_1():
+    if button_1.image_state:
+        button_1.config(image=button_image_1_alt)
+        button_1.image_state = False
+    else:
+        button_1.config(image=button_image_1)
+        button_1.image_state = True
+#Button object creation
 button_1 = Button(
     image=button_image_1,
     borderwidth=0,
     highlightthickness=0,
-    command=lambda: print("button_1 clicked"),
     relief="flat"
 )
 button_1.place(
@@ -98,6 +109,9 @@ button_1.place(
     width=90.0,
     height=21.0
 )
+button_1.image_state = True  # True for original image, False for alternate image
+button_1.config(command=toggle_button_1) # Assign the toggle function to button command
+
 
 image_image_7 = PhotoImage(
     file=relative_to_assets("image_7.png"))
@@ -107,13 +121,23 @@ image_7 = canvas.create_image(
     image=image_image_7
 )
 
-button_image_2 = PhotoImage(
-    file=relative_to_assets("button_2.png"))
+###### BUTTON FOR CORNERSTONE CONNECT ######
+#Load Images 
+button_image_2 = PhotoImage(file=relative_to_assets("button_2.png")) # Connect image
+button_image_2_alt = PhotoImage(file=relative_to_assets("button_2_opposite.png"))  # Green Connected image
+# function for button toggle between connect and connceted images
+def toggle_button_2():
+    if button_2.image_state:
+        button_2.config(image=button_image_2_alt)
+        button_2.image_state = False
+    else:
+        button_2.config(image=button_image_2)
+        button_2.image_state = True
+#Button object creation
 button_2 = Button(
     image=button_image_2,
     borderwidth=0,
     highlightthickness=0,
-    command=lambda: print("button_2 clicked"),
     relief="flat"
 )
 button_2.place(
@@ -122,70 +146,104 @@ button_2.place(
     width=90.0,
     height=21.0
 )
+button_2.image_state = True  # True for original image, False for alternate image
+button_2.config(command=toggle_button_2) # Assign the toggle function to button command
 
-button_image_3 = PhotoImage(
-    file=relative_to_assets("button_3.png"))
-button_3 = Button(
-    image=button_image_3,
-    borderwidth=0,
-    highlightthickness=0,
-    command=lambda: print("button_3 clicked"),
-    relief="flat"
-)
-button_3.place(
-    x=372.0,
-    y=151.0,
-    width=90.0,
-    height=41.0
-)
+###### 8 AND 16 SPOKE BUTTONS (BUTTON 3 = 8 SPOKE, BUTTON 5 = 16 SPOKE) ######
+button_image_3_light = PhotoImage(file=relative_to_assets("button_3_light.png"))
+button_image_3_dark = PhotoImage(file=relative_to_assets("button_3_dark.png"))
+button_image_5_light = PhotoImage(file=relative_to_assets("button_5_light.png"))
+button_image_5_dark = PhotoImage(file=relative_to_assets("button_5_dark.png"))
 
-button_image_4 = PhotoImage(
-    file=relative_to_assets("button_4.png"))
-button_4 = Button(
-    image=button_image_4,
-    borderwidth=0,
-    highlightthickness=0,
-    command=lambda: print("button_4 clicked"),
-    relief="flat"
-)
-button_4.place(
-    x=372.0,
-    y=233.0,
-    width=90.0,
-    height=41.0
-)
+# Define a function to toggle the images
+def toggle_buttons_3_5(button):
+    if button.image_state == "dark":
+        if button == button_3:
+            button_3.config(image=button_image_3_light)
+            button_5.config(image=button_image_5_dark)
+            button_3.image_state = "light"
+            button_5.image_state = "dark"
+        elif button == button_5:
+            button_5.config(image=button_image_5_light)
+            button_3.config(image=button_image_3_dark)
+            button_5.image_state = "light"
+            button_3.image_state = "dark"
 
-button_image_5 = PhotoImage(
-    file=relative_to_assets("button_5.png"))
-button_5 = Button(
-    image=button_image_5,
-    borderwidth=0,
-    highlightthickness=0,
-    command=lambda: print("button_5 clicked"),
-    relief="flat"
-)
-button_5.place(
-    x=489.0,
-    y=151.0,
-    width=90.0,
-    height=41.0
-)
+# Setup buttons
+button_3 = Button(window, image=button_image_3_light, borderwidth=0, highlightthickness=0, relief="flat")
+button_3.place(x=372.0, y=151.0, width=90.0, height=41.0)
+button_3.image_state = "light"  # Initial state
+button_3.config(command=lambda: toggle_buttons_3_5(button_3))
 
-button_image_6 = PhotoImage(
-    file=relative_to_assets("button_6.png"))
-button_6 = Button(
-    image=button_image_6,
-    borderwidth=0,
-    highlightthickness=0,
-    command=lambda: print("button_6 clicked"),
-    relief="flat"
-)
-button_6.place(
-    x=489.0,
-    y=233.0,
-    width=90.0,
-    height=41.0
-)
+button_5 = Button(window, image=button_image_5_dark, borderwidth=0, highlightthickness=0, relief="flat")
+button_5.place(x=489.0, y=151.0, width=90.0, height=41.0)
+button_5.image_state = "dark"  # Initial state
+button_5.config(command=lambda: toggle_buttons_3_5(button_5))
+
+###### CALIBRATION MODE BUTTONS (BUTTON 4 = ON, BUTTON 6 = OFF) ######
+# Load button images
+button_image_4_light = PhotoImage(file=relative_to_assets("button_4_light.png"))
+button_image_4_dark = PhotoImage(file=relative_to_assets("button_4_dark.png"))
+button_image_6_light = PhotoImage(file=relative_to_assets("button_6_light.png"))
+button_image_6_dark = PhotoImage(file=relative_to_assets("button_6_dark.png"))
+
+# Define a function to toggle the images
+def toggle_buttons_4_6(button):
+    if button.image_state == "dark":
+        if button == button_4:
+            button_4.config(image=button_image_4_light)
+            button_6.config(image=button_image_6_dark)
+            button_4.image_state = "light"
+            button_6.image_state = "dark"
+        elif button == button_6:
+            button_6.config(image=button_image_6_light)
+            button_4.config(image=button_image_4_dark)
+            button_6.image_state = "light"
+            button_4.image_state = "dark"
+
+# Setup buttons
+button_4 = Button(window, image=button_image_4_dark, borderwidth=0, highlightthickness=0, relief="flat")
+button_4.place(x=372.0, y=233.0, width=90.0, height=41.0)
+button_4.image_state = "dark"  # Initial state
+button_4.config(command=lambda: toggle_buttons_4_6(button_4))
+
+button_6 = Button(window, image=button_image_6_light, borderwidth=0, highlightthickness=0, relief="flat")
+button_6.place(x=489.0, y=233.0, width=90.0, height=41.0)
+button_6.image_state = "light"  # Initial state
+button_6.config(command=lambda: toggle_buttons_4_6(button_6))
+
+###### DOORLOCK BUTTONS (BUTTON 8 = LOCKED, BUTTON 9 = UNLOCKED) ######
+# Load button images
+button_image_8_light = PhotoImage(file=relative_to_assets("button_8_light.png"))
+button_image_8_dark = PhotoImage(file=relative_to_assets("button_8_dark.png"))
+button_image_9_light = PhotoImage(file=relative_to_assets("button_9_light.png"))
+button_image_9_dark = PhotoImage(file=relative_to_assets("button_9_dark.png"))
+
+# Define a function to toggle the images
+def toggle_buttons_8_9(button):
+    if button.image_state == "dark":
+        if button == button_8:
+            button_8.config(image=button_image_8_light)
+            button_9.config(image=button_image_9_dark)
+            button_8.image_state = "light"
+            button_9.image_state = "dark"
+        elif button == button_9:
+            button_9.config(image=button_image_9_light)
+            button_8.config(image=button_image_8_dark)
+            button_9.image_state = "light"
+            button_8.image_state = "dark"
+
+# Setup buttons
+button_8 = Button(window, image=button_image_8_light, borderwidth=0, highlightthickness=0, relief="flat")
+button_8.place(x=112.0, y=423.0, width=60.0, height=60.0)
+button_8.image_state = "light"  # Initial state
+button_8.config(command=lambda: toggle_buttons_8_9(button_8))
+
+button_9 = Button(window, image=button_image_9_dark, borderwidth=0, highlightthickness=0, relief="flat")
+button_9.place(x=198.0, y=423.0, width=60.0, height=54.0)
+button_9.image_state = "dark"  # Initial state
+button_9.config(command=lambda: toggle_buttons_8_9(button_9))
+
 
 canvas.create_text(
     149.0,
@@ -227,38 +285,6 @@ button_7.place(
     y=368.0,
     width=138.0,
     height=138.0
-)
-
-button_image_8 = PhotoImage(
-    file=relative_to_assets("button_8.png"))
-button_8 = Button(
-    image=button_image_8,
-    borderwidth=0,
-    highlightthickness=0,
-    command=lambda: print("button_8 clicked"),
-    relief="flat"
-)
-button_8.place(
-    x=112.0,
-    y=423.0,
-    width=60.0,
-    height=60.0
-)
-
-button_image_9 = PhotoImage(
-    file=relative_to_assets("button_9.png"))
-button_9 = Button(
-    image=button_image_9,
-    borderwidth=0,
-    highlightthickness=0,
-    command=lambda: print("button_9 clicked"),
-    relief="flat"
-)
-button_9.place(
-    x=198.0,
-    y=423.0,
-    width=60.0,
-    height=54.0
 )
 
 image_image_9 = PhotoImage(
