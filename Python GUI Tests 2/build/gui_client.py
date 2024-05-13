@@ -20,25 +20,11 @@ BYTESIZE = 1024
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client_socket.connect((DESTINATION_IP, DESTINATION_PORT))
 
-#Send/Recieve messages from server
-while True:
-    #Recieve information from the server
-    message = client_socket.recv(BYTESIZE).decode(ENCODER)
-
-    #Quit if the connected server wants to quit, else keep sending messages
-    if message == "quit":
-        client_socket.send("quit".encode(ENCODER))
-        print("\nEnding the Chat (Client Side)... Goodbye!!")
-        break
-    else:
-        print(f"\n{message}")
-        message = input("Message: ")
-        client_socket.send(message.encode(ENCODER))
+#Send Calibration Mode status to main.py
 def send_data(data):
     """Send data to the server."""
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.connect(('localhost', 6000))  # Make sure the server is listening on this port
-        s.sendall(data.encode('utf-8'))
+    client_socket.send(data.encode(ENCODER))
+
 
 OUTPUT_PATH = Path(__file__).parent
 ASSETS_PATH = OUTPUT_PATH / Path(r"C:\Users\micah\OneDrive\MAE 156\Capstone Project\MAE-156-Capstone-Project\Python GUI Tests 2\build\assets\frame0")
@@ -225,13 +211,15 @@ def toggle_buttons_4_6(button):
             button_6.config(image=button_image_6_dark)
             button_4.image_state = "light"
             button_6.image_state = "dark"
-            send_data("Calibration Mode: ON")
+            Cal_status = "Calibration Mode: ON"
+            send_data(Cal_status)
         elif button == button_6:
             button_6.config(image=button_image_6_light)
             button_4.config(image=button_image_4_dark)
             button_6.image_state = "light"
             button_4.image_state = "dark"
-            send_data("Calibration Mode: OFF")
+            Cal_status = "Calibration Mode: OFF"
+            send_data(Cal_status)
 
 # Setup buttons
 button_4 = Button(window, image=button_image_4_dark, borderwidth=0, highlightthickness=0, relief="flat")

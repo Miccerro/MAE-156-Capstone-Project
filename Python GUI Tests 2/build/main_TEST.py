@@ -14,13 +14,10 @@ server_socket.bind((HOST_IP, HOST_PORT))
 server_socket.listen()
 
 #Accept any incoming connection and let them know they are connected
-print(f"Micah Laptop IP address:{HOST_IP}")
-print(f"Server Port Number:{HOST_PORT}")
-print("Server is running... \n")
 client_socket, client_address = server_socket.accept()
 client_socket.send("You are connected to the server...\n".encode(ENCODER))
 
-#Infinite loop to Send/Recieve messages as server
+#Infinite loop to Recieve messages as server
 while True:
     #Recieve information from the client
     message = client_socket.recv(BYTESIZE).decode(ENCODER)
