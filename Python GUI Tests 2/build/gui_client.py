@@ -290,6 +290,10 @@ image_8 = canvas.create_image(
     320.0,
     image=image_image_8
 )
+# Button 7 - Analyze Button Setup and Press events
+def button_7_pressed(button):
+    Analyze_status = "Analyze Mode: ON"
+    send_data(Analyze_status)
 
 button_image_7 = PhotoImage(
     file=relative_to_assets("button_7.png"))
@@ -297,7 +301,7 @@ button_7 = Button(
     image=button_image_7,
     borderwidth=0,
     highlightthickness=0,
-    command=lambda: print("button_7 clicked"),
+    command=lambda: button_7_pressed(button_7),
     relief="flat"
 )
 button_7.place(
