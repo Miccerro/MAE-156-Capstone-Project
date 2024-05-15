@@ -60,13 +60,14 @@ image_3 = canvas.create_image(
     image=image_image_3
 )
 
-image_image_4 = PhotoImage(
-    file=relative_to_assets("image_4.png"))
-image_4 = canvas.create_image(
-    53.0,
-    20.0,
-    image=image_image_4
-)
+## Pookie image##
+# image_image_4 = PhotoImage(
+#     file=relative_to_assets("image_4.png"))
+# image_4 = canvas.create_image(
+#     53.0,
+#     20.0,
+#     image=image_image_4
+# )
 
 image_image_5 = PhotoImage(
     file=relative_to_assets("image_5.png"))
