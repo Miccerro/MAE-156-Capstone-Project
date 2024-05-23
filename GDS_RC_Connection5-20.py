@@ -303,7 +303,7 @@ def LoadStateString(client_socket): #The State for all states are unique, we can
     break  # Exit the loop if we handled a known state
 
 
-
+####### Beggining of process ######
 
 client_socket = GDS_Connect() #Connect to CornerStone
 input("Press Enter to continue. Connect Complete, logon is next")

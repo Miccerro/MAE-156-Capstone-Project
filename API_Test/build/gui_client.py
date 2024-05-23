@@ -27,7 +27,7 @@ def send_data(data):
 
 
 OUTPUT_PATH = Path(__file__).parent
-ASSETS_PATH = OUTPUT_PATH / Path(r"C:\Users\micah\OneDrive\MAE 156\Capstone Project\MAE-156-Capstone-Project\Python GUI Tests 2\build\assets\frame0")
+ASSETS_PATH = OUTPUT_PATH / Path(r"C:\Users\micah\OneDrive\MAE 156\Capstone Project\MAE-156-Capstone-Project\API_Test\build\assets\frame0")
 
 
 def relative_to_assets(path: str) -> Path:
