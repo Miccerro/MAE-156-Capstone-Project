@@ -66,6 +66,7 @@ def logon(client_socket):
 
 def addsamples(client_socket):
     ##WILL HAVE TO CHANGE BASED UPON IF WE WANT 8 or 16 SPOKES
+    
     addsample8Spoke_message = '''
     <AddSamples Cookie="AddSamples" Culture="en-US">
   <Set>
@@ -119,8 +120,101 @@ def addsamples(client_socket):
   </Replicates>
 </AddSamples>
 '''
-    addsample_reponse = sendMessage(addsample8Spoke_message,client_socket)
 
+    addsample16Spoke_message = '''
+    <AddSamples Cookie="AddSamples" Culture="en-US">
+  <Set>
+    <Field Id="SampleType">Sample</Field>
+    <Field Id="Name">PyTese2.1</Field>
+    <Field Id="Description"></Field>
+    <Field Id="MethodKey">0</Field>
+    <Field Id="StandardKey">0</Field>
+  </Set>
+  <Replicates>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke1</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke2</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke3</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke4</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke5</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke6</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke7</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke8</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke9</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke10</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke11</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke12</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke13</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke14</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke15</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke16</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+  </Replicates>
+</AddSamples>
+'''
+    addsample_reponse = sendMessage(addsample8Spoke_message,client_socket)
     checkError(addsample_reponse) #checks response
 
 def LastRemoteAddedSets(client_socket):
