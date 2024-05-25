@@ -11,50 +11,53 @@ DESTINATION_PORT = 12345
 ENCODER = "utf-16le"  # Character encoding scheme
 BYTESIZE = 1024
 
-
-############### Connect to GDS, to be done when pressing "Connect" button on GUI
 def GDS_Connect():
-  """
-  Establishes a connection to the GDS and returns the socket.
-  """
-  client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-  client_socket.connect((socket.gethostbyname(DESTINATION_IP), DESTINATION_PORT))
+    """
+    Establishes a connection to the GDS and returns the socket.
+    """
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client_socket.connect((socket.gethostbyname(DESTINATION_IP), DESTINATION_PORT))
 
-  print("Client_Socket in GDS_COnnect:", client_socket)
-  return client_socket
+    print("Client_Socket in GDS_COnnect:", client_socket)
+    return client_socket
 
 
-############### Sends and recieves messages going to the GDS
 def sendMessage(message, client_socket):
-  print("Send Message:", message) #Simply prints the message to be sent
-  encoded = message.encode(ENCODER) #encodes message
-  length = len(encoded)
-  packed = struct.pack('<i', length) #packs the length of the encoded message into binary format
+    print("Send Message:", message) #Simply prints the message to be sent
+    encoded = message.encode(ENCODER) #encodes message
+    length = len(encoded)
+    packed = struct.pack('<i', length) #packs the length of the encoded message into binary format
 
-  # send data length
-  client_socket.send(packed)
-  # send encoded data
-  client_socket.send(encoded)
+    # send data length
+    client_socket.send(packed)
+    # send encoded data
+    client_socket.send(encoded)
 
-  # read response length
-  responseLengthBytes = client_socket.recv(4) #Recieves response length in bytes
-  responseLength = struct.unpack('<i', responseLengthBytes)[0] #unpacks recieved bytes back into integer
-  print("Message Response Length:", responseLength)
-  # read response data
-  response = client_socket.recv(responseLength).decode(ENCODER)
-  print("Message Response:", response)
-  return response
+    # read response length
+    responseLengthBytes = client_socket.recv(4) #Recieves response length in bytes
+    responseLength = struct.unpack('<i', responseLengthBytes)[0] #unpacks recieved bytes back into integer
+    print("Message Response Length:", responseLength)
+    # read response data
+    response = client_socket.recv(responseLength).decode(ENCODER)
+    print("Message Response:", response)
+    return response
 
+def checkError(error_response):
+    root = ET.fromstring(error_response) #parse XML message
+    error_message = root.attrib.get('ErrorMessage') #Isolate ErrorMessage
 
-############### Sends the Heartbeat message, can be used to check if a connection is established. Will need to get response through testing
+    #CHANGE MESSAGE SEEN
+    if error_message == "Success":
+        print("Logon Successful")
+        #SIMPLY MOVE ON
+    else:
+        print("Logon failed: ", error_message)
+        #Return Value that prompts error 
+
 def heartbeat(client_socket):
-  heartbeat_message = '<Heartbeat />'
-  sendMessage(heartbeat_message, client_socket)
+    heartbeat_message = '<Heartbeat />'
+    sendMessage(heartbeat_message, client_socket)
 
-
-
-###############logon(client_socket),addsamples(client_socket),LastRemoteAddedSet(client_socket),AssignNextToAnalyze(LRAS_response,client_socket), and DisableAutoAnalyze(client_socket)
-#              will be sent in the Initialize state. No errors are expected here.
 def logon(client_socket):
     logon_message = '<Logon User="156a" Password="156a156a"/>' 
     logon_response = sendMessage(logon_message, client_socket)
@@ -63,7 +66,6 @@ def logon(client_socket):
 
 def addsamples(client_socket):
     ##WILL HAVE TO CHANGE BASED UPON IF WE WANT 8 or 16 SPOKES
-    
     addsample8Spoke_message = '''
     <AddSamples Cookie="AddSamples" Culture="en-US">
   <Set>
@@ -117,101 +119,8 @@ def addsamples(client_socket):
   </Replicates>
 </AddSamples>
 '''
-
-    addsample16Spoke_message = '''
-    <AddSamples Cookie="AddSamples" Culture="en-US">
-  <Set>
-    <Field Id="SampleType">Sample</Field>
-    <Field Id="Name">PyTese2.1</Field>
-    <Field Id="Description"></Field>
-    <Field Id="MethodKey">0</Field>
-    <Field Id="StandardKey">0</Field>
-  </Set>
-  <Replicates>
-    <Replicate>
-      <Field Id="Mass">1.0</Field>
-      <Field Id="Comments">Spoke1</Field>
-      <Field Id="Location"></Field>
-    </Replicate>
-    <Replicate>
-      <Field Id="Mass">1.0</Field>
-      <Field Id="Comments">Spoke2</Field>
-      <Field Id="Location"></Field>
-    </Replicate>
-    <Replicate>
-      <Field Id="Mass">1.0</Field>
-      <Field Id="Comments">Spoke3</Field>
-      <Field Id="Location"></Field>
-    </Replicate>
-    <Replicate>
-      <Field Id="Mass">1.0</Field>
-      <Field Id="Comments">Spoke4</Field>
-      <Field Id="Location"></Field>
-    </Replicate>
-    <Replicate>
-      <Field Id="Mass">1.0</Field>
-      <Field Id="Comments">Spoke5</Field>
-      <Field Id="Location"></Field>
-    </Replicate>
-    <Replicate>
-      <Field Id="Mass">1.0</Field>
-      <Field Id="Comments">Spoke6</Field>
-      <Field Id="Location"></Field>
-    </Replicate>
-    <Replicate>
-      <Field Id="Mass">1.0</Field>
-      <Field Id="Comments">Spoke7</Field>
-      <Field Id="Location"></Field>
-    </Replicate>
-    <Replicate>
-      <Field Id="Mass">1.0</Field>
-      <Field Id="Comments">Spoke8</Field>
-      <Field Id="Location"></Field>
-    </Replicate>
-    <Replicate>
-      <Field Id="Mass">1.0</Field>
-      <Field Id="Comments">Spoke9</Field>
-      <Field Id="Location"></Field>
-    </Replicate>
-    <Replicate>
-      <Field Id="Mass">1.0</Field>
-      <Field Id="Comments">Spoke10</Field>
-      <Field Id="Location"></Field>
-    </Replicate>
-    <Replicate>
-      <Field Id="Mass">1.0</Field>
-      <Field Id="Comments">Spoke11</Field>
-      <Field Id="Location"></Field>
-    </Replicate>
-    <Replicate>
-      <Field Id="Mass">1.0</Field>
-      <Field Id="Comments">Spoke12</Field>
-      <Field Id="Location"></Field>
-    </Replicate>
-    <Replicate>
-      <Field Id="Mass">1.0</Field>
-      <Field Id="Comments">Spoke13</Field>
-      <Field Id="Location"></Field>
-    </Replicate>
-    <Replicate>
-      <Field Id="Mass">1.0</Field>
-      <Field Id="Comments">Spoke14</Field>
-      <Field Id="Location"></Field>
-    </Replicate>
-    <Replicate>
-      <Field Id="Mass">1.0</Field>
-      <Field Id="Comments">Spoke15</Field>
-      <Field Id="Location"></Field>
-    </Replicate>
-    <Replicate>
-      <Field Id="Mass">1.0</Field>
-      <Field Id="Comments">Spoke16</Field>
-      <Field Id="Location"></Field>
-    </Replicate>
-  </Replicates>
-</AddSamples>
-'''
     addsample_reponse = sendMessage(addsample8Spoke_message,client_socket)
+
     checkError(addsample_reponse) #checks response
 
 def LastRemoteAddedSets(client_socket):
@@ -227,7 +136,7 @@ def LastRemoteAddedSets(client_socket):
 
 
 
-  #Expected Reply: WILL NEED TO LOG RESPONSE ON CORNERSTONE
+  #Expected Reply:
   # <LastRemoteAddedSets ErrorCode="0" ErrorMessage="Success" Cookie="LastRemoteAddedSets">
   # <Set Key="00000000000079F4" />
   # <Set Key="00000000000079F5" />
@@ -240,47 +149,27 @@ def LastRemoteAddedSets(client_socket):
     
 
 def AssignNextToAnalyze(LRAS_response,client_socket):
-  #print(LRAS_response)
-  # Parse the original XML message
-  root = ET.fromstring(LRAS_response)
-  # Extract the value of the 'Key' attribute
-  set_key = root.find('.//Set').get('Key')
-  # New XML message
-  #ANTA_message = f'<AssignNextToAnalyze SetKey="{set_key}" ReplicateTag="0" />'
-  ANTA_message = f'<AssignNextToAnalyze SetKey="{set_key}" ReplicateTag="0" />'
-  ANTA_response = sendMessage(ANTA_message,client_socket)
+    #print(LRAS_response)
+    # Parse the original XML message
+    root = ET.fromstring(LRAS_response)
+    # Extract the value of the 'Key' attribute
+    set_key = root.find('.//Set').get('Key')
+    # New XML message
+    #ANTA_message = f'<AssignNextToAnalyze SetKey="{set_key}" ReplicateTag="0" />'
+    ANTA_message = f'<AssignNextToAnalyze SetKey="{set_key}" ReplicateTag="0" />'
+    ANTA_response = sendMessage(ANTA_message,client_socket)
 
-  #Expected Reply: <AssignNextToAnalyze ErrorCode="0" ErrorMessage="Success" Cookie="AssignNextToAnalyze" />
-  checkError(ANTA_response)
+    #Expected Reply: <AssignNextToAnalyze ErrorCode="0" ErrorMessage="Success" Cookie="AssignNextToAnalyze" />
+    checkError(ANTA_response)
 
     
 
 def DisableAutoAnalyze(client_socket):
-  DAA = '<AutoAnalyze State="DISABLED" />'
-  DAA_response = sendMessage(DAA,client_socket)
+    DAA = '<AutoAnalyze State="DISABLED" />'
+    DAA_response = sendMessage(DAA,client_socket)
 
-  #Expected reply: <AutoAnalyze ErrorCode=”0” ErrorMessage=”Success”/>
-  checkError(ANTA_response)
-
-
-
-
-
-#Will have to be tested on real GDS. But it seems like starting the next analysis will automatically be placed on Cornersstone
-#This means that the initialize state will only need to be done once, Assume we can start the LOADING STATE after finishing the unloading state. 
-#So when we finish 1 spoke we can start loading the next spoke without having to do anything. (TBD)
-
-
-###################Start of LOADING state. 
-# Will need to use LoadStateString(client_socket) on line 356 to 
-# get state of GDS (used to move on to the next step)
-def LoadSampleStep2(client_socket):
-  LSS2 = '<ExecuteSequence Sequence="Load Sample Step 2" />'
-  LSS2_response = sendMessage(LSS2,client_socket)
-
-  #Expected Reply: <ExecuteSequence ErrorCode="0" ErrorMessage="Success" Cookie="ExecuteSequence" />
-  checkError(LSS2_response)
-
+    #Expected reply: <AutoAnalyze ErrorCode=”0” ErrorMessage=”Success”/>
+    checkError(ANTA_response)
 
 def LoadSampleStep1(client_socket):
     LSS1 = '<ExecuteSequence Sequence="Load Sample Step 1" />'
@@ -288,6 +177,14 @@ def LoadSampleStep1(client_socket):
     
     #Expected Replies: <ExecuteSequence ErrorCode="0" ErrorMessage="Success" Cookie="ExecuteSequence" />
     checkError(LSS1_response)
+
+
+def LoadSampleStep2(client_socket):
+    LSS2 = '<ExecuteSequence Sequence="Load Sample Step 2" />'
+    LSS2_response = sendMessage(LSS2,client_socket)
+
+    #Expected Reply: <ExecuteSequence ErrorCode="0" ErrorMessage="Success" Cookie="ExecuteSequence" />
+    checkError(LSS2_response)
 
 def LoadSampleStep3(client_socket):
     LSS3 = '<ExecuteSequence Sequence="Load Sample Step 3" />'
@@ -299,57 +196,36 @@ def LoadSampleStep3(client_socket):
 
 
 
-####################### Will begin Analysis (takes time to complete). Response is not known assume for it to be
-# "Complete" as a place holder. We dont expect any errors while at this state
 def Analyze(client_socket):
-  Analyze_message = '<Analyze />'
-  Analyze_response = sendMessage(Analyze_message,client_socket)
+    Analyze_message = '<Analyze />'
+    Analyze_response = sendMessage(Analyze_message,client_socket)
 
-  checkError(Analyze_response)
+    checkError(Analyze_response)
 
 
-######################Start of UNLOADING STATE
-def UnloadSampleStep1(client_socket):  #Retracts cooling puck
-  USS1 = '<ExecuteSequence Sequence="Unload Sample Step 1" />'
-  USS1_response = sendMessage(USS1,client_socket)
+def UnloadSampleStep1(client_socket): 
+    USS1 = '<ExecuteSequence Sequence="Unload Sample Step 1" />'
+    USS1_response = sendMessage(USS1,client_socket)
 
-  checkError(USS1_response)
+    
+    checkError(USS1_response)
 
-def UnloadSampleStep2(client_socket): #Reverses vacuum
+def UnloadSampleStep2(client_socket):
   USS2 = '<ExecuteSequence Sequence="Unload Sample Step 2" />'
   USS2_response = sendMessage(USS2,client_socket)
-  
+
+
   checkError(USS2_response)
 
-
-####################Start of REAMING State
-def UnloadSampleStep3(client_socket): #Begins reaming when sending this message. 
-                                      #Send once the PLC sends a value saying that it has completed moving
+def UnloadSampleStep3(client_socket):
   USS3 = '<ExecuteSequence Sequence="Unload Sample Step 3" />'
   USS3_response = sendMessage(USS3,client_socket)
 
+  
   checkError(USS3_response)
 
 
-#Check Error is not a query. It recieves the response when we send any message. It only tells us if the GDS
-#recieved the message and if it is in the correct syntax
-def checkError(error_response):
-  root = ET.fromstring(error_response) #parse XML message
-  error_message = root.attrib.get('ErrorMessage') #Isolate ErrorMessage
 
-  #CHANGE MESSAGE SEEN
-  if error_message == "Success":
-      print("Logon Successful")
-      #SIMPLY MOVE ON
-  else:
-      print("Logon failed: ", error_message)
-      #Return Value that prompts error 
-
-
-
-#Used in LoadStateString(client_socket). 
-#checkStringValue(SampleLoadState_reponse) takes the query message and returns a string with the Value attribute. 
-#Basically it extracts the value that we are intrested in
 def checkStringValue(SampleLoadState_reponse):
     root = ET.fromstring(SampleLoadState_reponse) # Parse the original XML message
     set_key = root.get('Value')# Extract the value of the 'Value' attribute
@@ -357,10 +233,7 @@ def checkStringValue(SampleLoadState_reponse):
     print(set_key)
     return set_key
 
-
-#LoadStateString(client_socket) is a query used in the LOADING,ANALYZE,UNLOADING, and REAMING states. 
-#This function sends a query message and recieves the state of the GDS. It should be used to know when to move on to
-#another state.
+  
 def LoadStateString(client_socket): #The State for all states are unique, we can reuse the same logic or can incorporate them into each function
   while True:
     time.sleep(1)
@@ -368,6 +241,8 @@ def LoadStateString(client_socket): #The State for all states are unique, we can
     SampleLoadState_reponse = sendMessage(SampleLoadState_message,client_socket)
 
     set_key = checkStringValue(SampleLoadState_reponse)
+
+
     
     ############# CHECK FOR STEP 1 ############# Creates Vacuum
     #Other messages: 
@@ -399,14 +274,6 @@ def LoadStateString(client_socket): #The State for all states are unique, we can
       #PLACE CODE TO BE EXECUTED HERE
     elif set_key == "Loaded": #Step 3 Competed
       print("STEP 3 COMPLETE READY TO MOVE ON TO NEXT STEP")
-
-
-    ############ANALYZE MESSAGE WILL BE ADDED HERE. NEED TO GET LOG OF VALUE############
-    #For now assume it is the string "Complete" as a placeholder
-    elif set_key == "Complete": #Analysis Complete message
-      print("Analysis Complete")
-
-    
 
     ############# CHECK FOR UNLOAD STEP 1 #############
     #"Unclamping" (Start of Unload Step 1)
@@ -482,18 +349,17 @@ LoadStateString(client_socket)
 
 
 
-#Get ready for next analysis (NUMBER 2)
-#Will have to be tested. But it seems like starting the next analysis will automatically  be placed on Cornersstone
-input("Press Enter to continue. AssignNextToAnalyze")
-AssignNextToAnalyze(LRAS_response,client_socket) #Specify what set key to analyze next (WILL AUTO PICK NEXT REPLICATE)
-input("Press Enter to continue. Load Sample Step 1 is next")
-LoadSampleStep1(client_socket)
-input("Press Enter to continue. Load Sample Step 2 is next")
-LoadSampleStep2(client_socket)
-input("Press Enter to continue. Load Sample Step 3 is next close door before hitting enter")
-LoadSampleStep3(client_socket)
-input("Press Enter to continue. Analyze is next")
-Analyze(client_socket)
+# #Get ready for next analysis (NUMBER 2)
+# input("Press Enter to continue. AssignNextToAnalyze")
+# AssignNextToAnalyze(LRAS_response,client_socket) #Specify what set key to analyze next (WILL AUTO PICK NEXT REPLICATE)
+# input("Press Enter to continue. Load Sample Step 1 is next")
+# LoadSampleStep1(client_socket)
+# input("Press Enter to continue. Load Sample Step 2 is next")
+# LoadSampleStep2(client_socket)
+# input("Press Enter to continue. Load Sample Step 3 is next close door before hitting enter")
+# LoadSampleStep3(client_socket)
+# input("Press Enter to continue. Analyze is next")
+# Analyze(client_socket)
 
 # #Get ready for next analysis (NUMBER 3)
 # input("Press Enter to continue. AssignNextToAnalyze")
