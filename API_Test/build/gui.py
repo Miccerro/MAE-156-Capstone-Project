@@ -32,6 +32,9 @@ def listen_for_server_messages():
                     window.after(0, toggle_button_1)
                 elif data == "Cornerstone Connected":
                     window.after(0, toggle_button_2)
+                elif data == 'Vacuum Error':
+                    print("Vacuum Error has occurred opening Error GUI")
+                    window.after(0, open_error_window)  # Opens the error GUI
         except Exception as e:
             print("Error receiving data:", e)
             break
@@ -406,6 +409,14 @@ def open_error_window():
     error_window.geometry("303x376")
     error_window.configure(bg="#1F1F1F")
 
+    def close_error_window():
+        error_window.destroy()
+
+    def handle_error_response(command):
+        print(f"Sending {command} to the server...")
+        send_data(command)
+        close_error_window()  # Close the error window after sending command
+
     # Create a new canvas specifically for the error window
     error_canvas = Canvas(error_window, bg="#1F1F1F", height=376, width=303, bd=0, highlightthickness=0, relief="ridge")
     error_canvas.place(x=0, y=0)
@@ -493,7 +504,7 @@ def open_error_window():
         image=button_image_1e,
         borderwidth=0,
         highlightthickness=0,
-        command=lambda: send_data("try again"),
+        command=lambda: handle_error_response("try again"),
         relief="flat"
     )
     button_1e.place(
@@ -511,7 +522,7 @@ def open_error_window():
         image=button_image_2e,
         borderwidth=0,
         highlightthickness=0,
-        command=lambda: send_data("skip spoke"),
+        command=lambda: handle_error_response("skip spoke"),
         relief="flat"
     )
     button_2e.place(
@@ -529,7 +540,7 @@ def open_error_window():
         image=button_image_3e,
         borderwidth=0,
         highlightthickness=0,
-        command=lambda: send_data("abort"),
+        command=lambda: handle_error_response("abort"),
         relief="flat"
     )
     button_3e.place(

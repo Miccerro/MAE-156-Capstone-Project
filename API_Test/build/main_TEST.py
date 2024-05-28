@@ -1,6 +1,7 @@
 import socket
 import time
 import threading
+import struct
 #import cornerstone_commands
 
 # Define constants
@@ -10,12 +11,167 @@ ENCODER = "utf-8"
 BYTESIZE = 1024
 PLC_IP = 'localhost' 
 PLC_PORT = 6049  
+CORNERSTONE_SERVER_IP = 'localhost'
+CORNERSTONE_SERVER_PORT = 12345
+CORNERSTONE_ENCODER = 'utf-16le'
 
-#Global Variables
+# Global Variables
 wagon_wheel = 8
-PLC_socket = None  #variable to track Arduino connection
+PLC_socket = None  # Variable to track Arduino connection
+CORNERSTONE_socket = None  # Variable to track CornerStone connection
 
-# Define function to handle PLC connection
+# Cornerstone XML Message variables
+Login_Password_XML = '<Logon User="156a" Password="156a156a"/>'
+AddSample8Spoke_XML = '''
+    <AddSamples Cookie="AddSamples" Culture="en-US">
+  <Set>
+    <Field Id="SampleType">Sample</Field>
+    <Field Id="Name">PyTese2.1</Field>
+    <Field Id="Description"></Field>
+    <Field Id="MethodKey">0</Field>
+    <Field Id="StandardKey">0</Field>
+  </Set>
+  <Replicates>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke1</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke2</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke3</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke4</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke5</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke6</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke7</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke8</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+  </Replicates>
+</AddSamples>
+'''
+AddSample16Spoke_XML = '''
+    <AddSamples Cookie="AddSamples" Culture="en-US">
+  <Set>
+    <Field Id="SampleType">Sample</Field>
+    <Field Id="Name">PyTese2.1</Field>
+    <Field Id="Description"></Field>
+    <Field Id="MethodKey">0</Field>
+    <Field Id="StandardKey">0</Field>
+  </Set>
+  <Replicates>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke1</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke2</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke3</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke4</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke5</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke6</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke7</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke8</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke9</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke10</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke11</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke12</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke13</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke14</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke15</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke16</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+  </Replicates>
+</AddSamples>
+'''
+
+
+
+############### Define functions to handle PLC connection and Communication ###############
 def handle_PLC_connection():
     global PLC_socket
     PLC_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -49,16 +205,56 @@ def send_receive_PLC(command): # function to send and receive commands to/from t
         PLC_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         PLC_socket.connect((PLC_IP, PLC_PORT))
     PLC_socket.sendall(command.encode(ENCODER))
+    # Wait for a response to confirm the action
     response = PLC_socket.recv(BYTESIZE).decode(ENCODER)
     return response
 
-# Define function to handle Cornerstone connection
-def handle_cornerstone_connection():
-    print("Connecting to Cornerstone...")
-    time.sleep(2)
-    print("Cornerstone connection established")
-    # INSERT CORNERSTONE CONNECTION CODE
-    return "Cornerstone Connected"  # Return message indicating success
+############### Define functions to handle CORNERSTONE connection and communication ###############
+def handle_CORNERSTONE_connection():
+    global CORNERSTONE_socket
+    try:
+        if CORNERSTONE_socket is None:
+            CORNERSTONE_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            CORNERSTONE_socket.connect((CORNERSTONE_SERVER_IP, CORNERSTONE_SERVER_PORT))
+            print("Connected to CornerStone server.")
+        return True
+    except socket.error as e:
+        print(f"Failed to connect to CornerStone: {e}")
+        if CORNERSTONE_socket:
+            CORNERSTONE_socket.close()
+            CORNERSTONE_socket = None
+        return False
+
+def send_receive_CORNERSTONE(xml_command):
+    """Send an XML command to the CornerStone server and receive the response."""
+    global CORNERSTONE_socket
+    if handle_CORNERSTONE_connection():  # Ensure connection is established
+        # Prepare the XML command
+        encoded_command = xml_command.encode(CORNERSTONE_ENCODER)
+        # Send the length of the command followed by the command itself
+        packed_length = struct.pack('<i', len(encoded_command))
+        CORNERSTONE_socket.sendall(packed_length)
+        CORNERSTONE_socket.sendall(encoded_command)
+        
+        # Receive the response length
+        response_length_bytes = CORNERSTONE_socket.recv(4)
+        if response_length_bytes:
+            response_length = struct.unpack('<i', response_length_bytes)[0]
+            # Receive the full response based on the length
+            response = CORNERSTONE_socket.recv(response_length).decode(CORNERSTONE_ENCODER)
+            print(f"Received from CornerStone: {response}")
+            return response
+    return None
+
+def close_CORNERSTONE_connection():
+    global CORNERSTONE_socket
+    if CORNERSTONE_socket:
+        print("Closing connection to CornerStone...")
+        CORNERSTONE_socket.close()
+        CORNERSTONE_socket = None
+        print("Connection to CornerStone closed")
+
+
 
 def Wagon_Wheel_Initialization(data):
     global wagon_wheel  # Declare the use of the global variable
@@ -116,8 +312,11 @@ class IdleState(State):
             self.gui_client_socket.send(response.encode(ENCODER))
         elif data == "connect cornerstone request":
             # Simulate socket connection operation to Cornerstone then sends confirmation upon connection to gui
-            response = handle_cornerstone_connection()
-            self.gui_client_socket.send(response.encode(ENCODER))
+            CORNERSTONE_connection_status = handle_CORNERSTONE_connection()
+            if CORNERSTONE_connection_status:
+                print("Sending to GUI 'Cornerstone Connected'")
+                gui_response = 'Cornerstone Connected'
+                self.gui_client_socket.send(gui_response.encode(ENCODER))
 
 ########################################################################################################################
 class CalibrationState(State):
@@ -128,7 +327,7 @@ class CalibrationState(State):
     def enter_state(self):
         super().enter_state()
         # Code to execute every time the state is entered
-        #self.start_calibration_process()
+        self.start_calibration_process()
 
     def handle(self, data):
         if data == "calibration off":
@@ -137,9 +336,14 @@ class CalibrationState(State):
             self.context.change_state('idle')
 
     def start_calibration_process(self):
-        print("Calibration: Starting")
-        self.client_socket.send("Calibration Mode: ON".encode(ENCODER))
-        #INSERT FUNCTION TO SEND TO PLC THAT CALIBRATION MODE IS ON 
+        print("Sending Calibration mode command to PLC...")
+        self.gui_client_socket.send("Calibration Mode: ON".encode(ENCODER))
+        PLC_response = send_receive_PLC("Enter Calibration Mode")
+        if PLC_response:
+            self.gui_client_socket.send("Calibration Mode: OFF".encode(ENCODER))
+            self.context.change_state('idle')
+        else:
+            print("Calibration failed or not confirmed:", PLC_response)
 
 ########################################################################################################################
 class AnalysisState(State):
@@ -199,8 +403,8 @@ class AnalysisState(State):
 class InitializingState(State):
     def enter_state(self):
         super().enter_state()
-        self.add_samples()
         self.send_logon()
+        self.add_samples()
         self.transition_sub_states()
 
     def handle(self, data):
@@ -209,10 +413,20 @@ class InitializingState(State):
     def add_samples(self):
         global wagon_wheel
         print(f"Adding {wagon_wheel} Samples...")
+        if wagon_wheel == 16:
+            send_receive_CORNERSTONE(AddSample16Spoke_XML)
+        else:
+            send_receive_CORNERSTONE(AddSample8Spoke_XML)
+        # Not sure but possibly need to add funcitonality to recieve messages
 
     def send_logon(self):
-        #[INSERT LOGON COMMANDS]
         print("sending logon information to Cornerstone...")
+        login_response = send_receive_CORNERSTONE(Login_Password_XML)
+        if 'Success' in login_response:
+            print("Initialization State: Login successful.")
+        else:
+            print("Initialization State:Login failed.")
+        # Possibly add command to send heartbeat to make sure connection has been established to cornerstone
 
     def transition_sub_states(self):
         # Assuming the next state after initialization is 'loading'
@@ -225,11 +439,23 @@ class LoadingState(State):
     def enter_state(self):
         super().enter_state()
         self.execute_load_samples123()
-        self.transition_sub_states()
+        #self.transition_sub_states()
         #Include the error stuff in this sub-class
 
     def handle(self, data):
         print(f"Sent from main GUI: {data}")
+        if data == 'try again':
+            #[INSERT FUNCTION FOR REDOING SAMPLE LOAD]
+            self.handle_try_again()
+            print("Retrying Sample Load")
+        if data == 'skip spoke':
+            #[INSERT FUNCTION FOR MOVING ONTO NEXT SPOKE]
+            self.handle_skip_spoke()
+            print("Moving onto next spoke")
+        if data == 'abort':
+            #[INSERT FUNCTION FOR ABORTING ENTIRE ANALYSIS PROCESS]
+            self.handle_abort()
+            print("Aborting Process")
 
     def execute_load_samples123(self):
         #[INSERT LOAD SAMPLE XML CODE HERE]
@@ -239,6 +465,18 @@ class LoadingState(State):
         print("Transitioning to Sample Analyze State...")
         time.sleep(2)
         self.context.change_sub_state('sample analyzing')
+    
+    def handle_try_again(self):
+        print("Handling 'try again' command...")
+        # Insert logic to retry the operation that failed
+
+    def handle_skip_spoke(self):
+        print("Handling 'skip spoke' command...")
+        # Insert logic to skip the current operation and move to the next
+
+    def handle_abort(self):
+        print("Handling 'abort' command...")
+        # Insert logic to abort the operation and possibly reset or shutdown
 
 ##########################################
 class SampleAnalysisState(State):
@@ -373,6 +611,7 @@ class Server:
             gui_client_socket.close()
             self.server_socket.close()
             close_PLC_connection()  # Ensure PLC connection is closed on server shutdown
+            close_CORNERSTONE_connection()  # Ensure CORNERSTONE connection is closed on server shutdown
 
 ################################################
 # Creating server instance 

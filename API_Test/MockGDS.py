@@ -3,7 +3,7 @@ import struct
 import xml.etree.ElementTree as ET
 
 # Define server constants
-SERVER_IP = '127.0.0.1'
+SERVER_IP = 'localhost'
 SERVER_PORT = 12345
 ENCODER = 'utf-16le'
 BYTESIZE = 1024
