@@ -1,5 +1,6 @@
 
 import socket
+import time
 
 def main():
     # Set the server's host and port
@@ -36,6 +37,7 @@ def main():
             elif data == 'Start Analysis Process':
                 response = "Analysis Started"
             elif data == 'connect plc':
+                time.sleep(3)
                 response = "PLC Connection Established"
             else:
                 response = "Command Not Recognized"

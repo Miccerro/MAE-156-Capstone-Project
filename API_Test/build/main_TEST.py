@@ -2,6 +2,7 @@ import socket
 import time
 import threading
 import struct
+import xml.etree.ElementTree as ET
 #import cornerstone_commands
 
 # Define constants
@@ -168,7 +169,13 @@ AddSample16Spoke_XML = '''
   </Replicates>
 </AddSamples>
 '''
-
+LRAS_message = '<LastRemoteAddedSets Cookie="LastRemoteAddedSets" Culture="en-US" />'
+DAA_message = '<AutoAnalyze State="DISABLED" />'
+LSS2 = '<ExecuteSequence Sequence="Load Sample Step 2" />'
+SampleLoadState_message = '<StringValue Key="Sample Load State" Cookie="StringValue" Culture="en-US" />'
+LSS1 = '<ExecuteSequence Sequence="Load Sample Step 1" />'
+LSS3 = '<ExecuteSequence Sequence="Load Sample Step 3" />'
+Analyze_Sample_message = '<Analyze />'
 
 
 ############### Define functions to handle PLC connection and Communication ###############
@@ -198,6 +205,7 @@ def close_PLC_connection():
         PLC_socket = None
         print("Connection to PLC closed")
 
+# NEED TO ADD FEW MORE THINGS ERIC
 def send_receive_PLC(command): # function to send and receive commands to/from the PLC server
     """Send a command to the PLC and receive the response."""
     global PLC_socket
@@ -224,6 +232,29 @@ def handle_CORNERSTONE_connection():
             CORNERSTONE_socket.close()
             CORNERSTONE_socket = None
         return False
+    
+#Check Error is not a query. It recieves the response when we send any message. It only tells us if the GDS
+#recieved the message and if it is in the correct syntax
+def checkError(error_response):
+  root = ET.fromstring(error_response) #parse XML message
+  error_message = root.attrib.get('ErrorMessage') #Isolate ErrorMessage
+  #CHANGE MESSAGE SEEN
+  if error_message == "Success":
+      print("Logon Successful")
+      return True
+      #SIMPLY MOVE ON
+  else:
+      print("Logon failed: ", error_message)
+      return False
+      #Return Value that prompts error
+
+#checkStringValue(SampleLoadState_reponse) takes the query message and returns a string with the Value attribute. 
+#Basically it extracts the value that we are intrested in
+def checkStringValue(SampleLoadState_reponse):
+    root = ET.fromstring(SampleLoadState_reponse) # Parse the original XML message
+    set_key = root.get('Value')# Extract the value of the 'Value' attribute
+    print(set_key)
+    return set_key
 
 def send_receive_CORNERSTONE(xml_command):
     """Send an XML command to the CornerStone server and receive the response."""
@@ -254,7 +285,7 @@ def close_CORNERSTONE_connection():
         CORNERSTONE_socket = None
         print("Connection to CornerStone closed")
 
-
+        
 
 def Wagon_Wheel_Initialization(data):
     global wagon_wheel  # Declare the use of the global variable
@@ -360,7 +391,7 @@ class AnalysisState(State):
             'reaming': ReamingState(self, gui_client_socket, name = 'Analysis Sub-State: Reaming State'),
             'moving': MovingState(self, gui_client_socket, name = 'Analysis Sub-State: Moving State')
         }
-        self.current_sub_state = self.sub_states['initializing']
+        self.current_sub_state = self.sub_states['initializing'] # can be thought of as context_sub_state
         self.is_active = False  # Initialize the is_active attribute to control process initiation
 
     def enter_state(self):
@@ -405,7 +436,6 @@ class InitializingState(State):
         super().enter_state()
         self.send_logon()
         self.add_samples()
-        self.transition_sub_states()
 
     def handle(self, data):
         print(f"Sent from main GUI: {data}")
@@ -414,9 +444,31 @@ class InitializingState(State):
         global wagon_wheel
         print(f"Adding {wagon_wheel} Samples...")
         if wagon_wheel == 16:
-            send_receive_CORNERSTONE(AddSample16Spoke_XML)
+            addSample_response = send_receive_CORNERSTONE(AddSample16Spoke_XML)
+            addSample_message_flag = checkError(addSample_response) # bool TRUE if success in message
+            if addSample_message_flag:
+                print("Commencing LRAS...")
+                LRAS_response = send_receive_CORNERSTONE(LRAS_message)
+                # Parse the original XML message
+                root = ET.fromstring(LRAS_response)
+                # Extract the value of the 'Key' attribute
+                set_key = root.find('.//Set').get('Key')
+                # New XML message
+                ANTA_message = f'<AssignNextToAnalyze SetKey="{set_key}" ReplicateTag="0" />'
+                ANTA_response = send_receive_CORNERSTONE(ANTA_message) 
+                ANTA_message_flag = checkError(ANTA_response)
+                if ANTA_message_flag:
+                    print("Commencing disable auto-analyze")
+                    DAA_response = send_receive_CORNERSTONE(DAA_message)
+                    DAA_message_flag = checkError(DAA_response)
+                    if DAA_message_flag:
+                        #transition to loading state 
+                        self.transition_sub_states()
+            else:
+                #ADD POSSIBLE ERROR STATE OR GO BACK TO IDLE STATE
+                print("We screwed fs")
         else:
-            send_receive_CORNERSTONE(AddSample8Spoke_XML)
+            addSample_response = send_receive_CORNERSTONE(AddSample8Spoke_XML)
         # Not sure but possibly need to add funcitonality to recieve messages
 
     def send_logon(self):
@@ -433,13 +485,13 @@ class InitializingState(State):
         print("Transitioning to Loading State...")
         time.sleep(2)
         self.context.change_sub_state('loading')
-
+ 
 #########################################
 class LoadingState(State):
     def enter_state(self):
         super().enter_state()
-        self.execute_load_samples123()
-        #self.transition_sub_states()
+        self.execute_load_samples2()
+        self.transition_sub_states()
         #Include the error stuff in this sub-class
 
     def handle(self, data):
@@ -448,7 +500,7 @@ class LoadingState(State):
             #[INSERT FUNCTION FOR REDOING SAMPLE LOAD]
             self.handle_try_again()
             print("Retrying Sample Load")
-        if data == 'skip spoke':
+        if data == 'skip spoke': 
             #[INSERT FUNCTION FOR MOVING ONTO NEXT SPOKE]
             self.handle_skip_spoke()
             print("Moving onto next spoke")
@@ -457,9 +509,58 @@ class LoadingState(State):
             self.handle_abort()
             print("Aborting Process")
 
-    def execute_load_samples123(self):
-        #[INSERT LOAD SAMPLE XML CODE HERE]
-        print("Loading samples...")
+    def execute_load_samples2(self):
+        print("Commencing sample step 2...")
+        LSS2_response = send_receive_CORNERSTONE(LSS2)
+        LSS2_message_flag = checkError(LSS2_response)
+        if LSS2_message_flag:
+            while True:
+                SampleLoadState_response = send_receive_CORNERSTONE(SampleLoadState_message) #Sends query message to see if step is complete
+                LSS2_SetKey = checkStringValue(SampleLoadState_response)
+                time.sleep(1)
+                if LSS2_SetKey == "Error: depressurizing to 0.1 torr timeout":
+                    # POSSIBLY NEED TO PASS gui_client_socket
+                    self.gui_client_socket.send("Vacuum Error".encode(ENCODER)) #tell gui.py to open vacuum error gui
+                elif LSS2_SetKey == "Clamped - Low Pressure":
+                    print("Commencing sample step 1...")
+                    break
+            self.execute_load_samples1()
+            
+    
+    def execute_load_samples1(self):
+        print("Commencing sample step 1...")
+        LSS1_response = send_receive_CORNERSTONE(LSS1)
+        LSS1_message_flag = checkError(LSS1_response)
+        if LSS1_message_flag:
+            while True:
+                SampleLoadState_response = send_receive_CORNERSTONE(SampleLoadState_message) #Sends query message to see if step is complete
+                LSS1_SetKey = checkStringValue(SampleLoadState_response)
+                time.sleep(1)
+                if LSS1_SetKey == "Error: pressure evacuation timeout":
+                    # POSSIBLY NEED TO PASS gui_client_socket
+                    self.gui_client_socket.send("Vacuum Error".encode(ENCODER)) #tell gui.py to open vacuum error gui
+                elif LSS1_SetKey == "Evacuated":
+                    print("Commencing sample step 3...")
+                    break
+            self.execute_load_samples3()
+
+    
+    def execute_load_samples3(self):
+        print("Commencing sample step 3...")
+        LSS3_response = send_receive_CORNERSTONE(LSS3)
+        LSS3_message_flag = checkError(LSS3_response)
+        if LSS3_message_flag:
+            while True:
+                SampleLoadState_response = send_receive_CORNERSTONE(SampleLoadState_message) #Sends query message to see if step is complete
+                LSS3_SetKey = checkStringValue(SampleLoadState_response)
+                time.sleep(1)
+                if LSS3_SetKey == "Error: depressurizing to 0.1 torr timeout":
+                    # POSSIBLY NEED TO PASS gui_client_socket
+                    self.gui_client_socket.send("Vacuum Error".encode(ENCODER)) #tell gui.py to open vacuum error gui
+                elif LSS3_SetKey == "Loaded":
+                    print("Finished with sample loading, Moving to sample analysis...")
+                    break
+            self.transition_sub_states()
 
     def transition_sub_states(self):
         print("Transitioning to Sample Analyze State...")
@@ -469,6 +570,7 @@ class LoadingState(State):
     def handle_try_again(self):
         print("Handling 'try again' command...")
         # Insert logic to retry the operation that failed
+        # Try the same loading sample step again (whatever step is failed on)
 
     def handle_skip_spoke(self):
         print("Handling 'skip spoke' command...")
@@ -490,6 +592,17 @@ class SampleAnalysisState(State):
 
     def execute_sample_analysis(self):
         print("Conducting Sample Analysis...")
+        SampleAnalysis_response = send_receive_CORNERSTONE(Analyze_Sample_message)
+        SampleAnalysis_message_flag = checkError(SampleAnalysis_response)
+        if SampleAnalysis_message_flag:
+            while True:
+                SampleLoadState_response = send_receive_CORNERSTONE(SampleLoadState_message) #NEEDS TO BE DOUBLE CHECKED
+                SampleAnalysis_SetKey = checkStringValue(SampleLoadState_response) #NEEDS TO BE DOUBLE CHECKED
+                time.sleep(1)
+                if SampleAnalysis_SetKey == "Complete":  #NEED TO DOUBLE CHECK
+                    break
+            self.transition_sub_states()
+
     
     def transition_sub_states(self):
         print("Transitioning to Unloading State...")
