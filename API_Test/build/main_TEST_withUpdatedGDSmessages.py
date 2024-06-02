@@ -299,9 +299,6 @@ def listen_for_response():
     return response
 
 
-
-
-
 ############### Define functions to handle CORNERSTONE connection and communication ###############
 def handle_CORNERSTONE_connection():
     global CORNERSTONE_socket
@@ -476,15 +473,14 @@ class CalibrationState(State):
             calibrationComplete_PLC = listen_for_response() #Waits for PLC to indicate that calibration has been complete
             #Blocking code, so will not move on until a respose is recieved CAN MAKE INTO IF STATMENT IF WANTED
             if calibrationComplete_PLC == 'CalibrationComplete':
-                break
+                self.context.change_state('idle')
             else:
                 print('we cooked frfr')
-            self.context.change_state('idle')
         else:
             print("Calibration failed or not confirmed:", PLC_response)
 
 
-########################################################################################################################
+##########################################################################################################################
 class AnalysisState(State):
     def __init__(self, context, gui_client_socket):
         super().__init__(context, gui_client_socket, name = "Analysis State")
@@ -595,7 +591,7 @@ class InitializingState(State):
         time.sleep(2)
         self.context.change_sub_state('loading')
  
-#########################################
+############################################
 class LoadingState(State):
     def enter_state(self):
         super().enter_state()
@@ -672,7 +668,7 @@ class LoadingState(State):
                 if LSS3_SetKey == "Error: depressurizing to 0.1 torr timeout":
                     # POSSIBLY NEED TO PASS gui_client_socket
                     self.gui_client_socket.send("Vacuum Error".encode(ENCODER)) #tell gui.py to open vacuum error gui
-                elif LSS2_SetKey == "Loaded":
+                elif LSS3_SetKey == "Loaded":
                     print("Sample Loaded, Commencing Sample Analysis...")
                     #WILL NEED TO SEND PLC A COMMAND TO UNDO THE X-AXIS
                     break
@@ -699,7 +695,7 @@ class LoadingState(State):
         print("Handling 'abort' command...")
         # Insert logic to abort the operation and possibly reset or shutdown
 
-##########################################
+#############################################
 class SampleAnalysisState(State):
     def enter_state(self):
         super().enter_state()
