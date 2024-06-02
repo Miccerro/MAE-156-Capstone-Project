@@ -178,19 +178,20 @@ SampleLoadState_message = '<StringValue Key="Sample Load State" Cookie="StringVa
 Analyze_Sample_message = '<Analyze />'
 AnalysisState_message = '<Prerequisite Key="Analyzing" Cookie="Prerequisite" Culture="en-US" />'
 USS1 = '<ExecuteSequence Sequence="Unload Sample Step 1" />'
-USS1 = '<ExecuteSequence Sequence="Unload Sample Step 2" />'
+USS2 = '<ExecuteSequence Sequence="Unload Sample Step 2" />'
 
 Reaming_message = '<ExecuteSequence Sequence="Ream Anode" Cookie="ExecuteSequence" Culture="en-US" />'
 ReamState_message = '<Sequence Name="Ream Anode" Cookie="Sequence" Culture="en-US" />'
 
+Heartbeat_message = '<Heartbeat/>'
 
 ##PLC MESSAGES:
 AddSamples8Spoke_PLC = 'Spokes8'
 AddSamples8Spoke_PLC = 'Spokes16'
 EnterCalibration_PLC = 'CalibrationOn'
 ExitCalibration_PLC = 'CalibrationOff'
-ActautePushSample = 'PushSample'
-ActautePullSample = 'PullSample'
+ActuatePushSample = 'PushSample'
+ActuatePullSample = 'PullSample'
 MoveToSafeArea8 = 'MoveToSafe8' #NEED TO ADD TO PLC
 MoveToSafeArea16 = 'MoveToSafe16' #NEED TO ADD TO PLC
 MoveToSpoke = 'MoveToSpoke#' #PlaceHolderForNow
@@ -344,15 +345,15 @@ def checkStringValue(SampleLoadState_reponse):
 #False - Process is still being executed
 def checkReamStateValue(ReamState_response):
     root = ET.fromstring(ReamState_response) # Parse the XML message
-    running_state = root.attrib.get('Running') # Get the 'Running' attribute
-    print(ReamRunning_status)
-    return ReamRunning_status
+    reaming_running_state = root.attrib.get('Running') # Get the 'Running' attribute
+    print(reaming_running_state)
+    return reaming_running_state
 
 def checkAnalysisValue(SampleAnalysisState_response):
     root = ET.fromstring(SampleAnalysisState_response) # Parse the XML message
-    running_state = root.attrib.get('Running') # Get the 'Running' attribute
-    print(AnalysisRunning_state)
-    return AnalysisRunning_state
+    analysis_running_state = root.attrib.get('Running') # Get the 'Running' attribute
+    print(analysis_running_state)
+    return analysis_running_state
 
 def send_receive_CORNERSTONE(xml_command):
     """Send an XML command to the CornerStone server and receive the response."""
@@ -383,7 +384,7 @@ def close_CORNERSTONE_connection():
         CORNERSTONE_socket = None
         print("Connection to CornerStone closed")
 
-        
+
 
 def Wagon_Wheel_Initialization(data):
     global wagon_wheel  # Declare the use of the global variable
@@ -429,7 +430,7 @@ class IdleState(State):
         print(f"Idle State: Received '{data}'")
         if data == "calibration on":
             self.context.change_state('calibration')
-            #send_receive_PLC('CalibrationOn') #THIS IS REPEATED TWICE I BELEIVE!!!
+            send_receive_PLC('CalibrationOn') 
         elif data == "Start Analysis Process": 
             self.context.change_state('analysis')
         elif data in ['8-Spoke Wagon Wheel Selected', '16-Spoke Wagon Wheel Selected']:
@@ -468,16 +469,17 @@ class CalibrationState(State):
         print("Sending Calibration mode command to PLC...")
         self.gui_client_socket.send("Calibration Mode: ON".encode(ENCODER))
         PLC_response = send_receive_PLC('CalibrationOn')
-        if PLC_response: #PLC Autoamtically sends a message that states that it has entered calibration mode
-            self.gui_client_socket.send("Calibration Mode: OFF".encode(ENCODER))
+        print(PLC_response)
+        if PLC_response == 'EnteringCalibrationMode': #PLC Autoamtically sends a message that states that it has entered calibration mode
             calibrationComplete_PLC = listen_for_response() #Waits for PLC to indicate that calibration has been complete
             #Blocking code, so will not move on until a respose is recieved CAN MAKE INTO IF STATMENT IF WANTED
             if calibrationComplete_PLC == 'CalibrationComplete':
+                self.gui_client_socket.send("Calibration Mode: OFF".encode(ENCODER))
                 self.context.change_state('idle')
             else:
                 print('we cooked frfr')
         else:
-            print("Calibration failed or not confirmed:", PLC_response)
+            print("Bummzies", PLC_response)
 
 
 ##########################################################################################################################
@@ -493,22 +495,22 @@ class AnalysisState(State):
             'sample analyzing': SampleAnalysisState(self, gui_client_socket, name = 'Analysis Sub-State: Sample Analyze State'),
             'unloading': UnloadingState(self, gui_client_socket, name = 'Analysis Sub-State: Unloading State'),
             'reaming': ReamingState(self, gui_client_socket, name = 'Analysis Sub-State: Reaming State'),
-            'moving': MovingState(self, gui_client_socket, name = 'Analysis Sub-State: Moving State')
+            # 'moving': MovingState(self, gui_client_socket, name = 'Analysis Sub-State: Moving State')
         }
         self.current_sub_state = self.sub_states['initializing'] # can be thought of as context_sub_state
         self.is_active = False  # Initialize the is_active attribute to control process initiation
 
     def enter_state(self):
         super().enter_state()
+        self.current_sub_state = self.sub_states['initializing'] #Every time analysis state is entered it always starts in initializing state
         self.current_sub_state.enter_state()
-        # Actions to execute when entering the analysis state
-        #self.start_analysis_processes()
         self.is_active = True
+        self.start_analysis_processes()
 
     def start_analysis_processes(self):
-        # Define the series of processes to start
         print("Starting initialization of analysis process")
-        #INSERT STARTING ANALYSIS PROCESSES
+        self.current_sub_state = self.sub_states['initializing'] 
+        self.current_sub_state.enter_state()
 
     def handle(self, data): #This is where you put what will occur when a certain message is sent to server when code is in this current state
         #Handles commands specific to analysis state
@@ -568,7 +570,6 @@ class InitializingState(State):
                     if DAA_message_flag:
                         #transition to loading state 
                         self.transition_sub_states()
-                        #ADD A COMMAND HERE THAT TELLS THE PLC TO MOVE THE X-AXIS
             else:
                 #ADD POSSIBLE ERROR STATE OR GO BACK TO IDLE STATE
                 print("We screwed fs")
@@ -596,21 +597,17 @@ class LoadingState(State):
     def enter_state(self):
         super().enter_state()
         self.execute_load_samples1()
-        self.transition_sub_states()
         #Include the error stuff in this sub-class
 
     def handle(self, data):
         print(f"Sent from main GUI: {data}")
         if data == 'try again':
-            #[INSERT FUNCTION FOR REDOING SAMPLE LOAD]
             self.handle_try_again()
             print("Retrying Sample Load")
         if data == 'skip spoke': 
-            #[INSERT FUNCTION FOR MOVING ONTO NEXT SPOKE]
             self.handle_skip_spoke()
             print("Moving onto next spoke")
         if data == 'abort':
-            #[INSERT FUNCTION FOR ABORTING ENTIRE ANALYSIS PROCESS]
             self.handle_abort()
             print("Aborting Process")
 
@@ -618,9 +615,8 @@ class LoadingState(State):
     def execute_load_samples1(self):
         #Place command to move the x-axis here. 
         #basically send PLC A messag to move the x axis only after this command is called for
-        send_receive_PLC(ActautePushSample)
-
-
+        X_Actuate_Response = send_receive_PLC(ActuatePushSample)
+        print(X_Actuate_Response)
         print("Commencing sample step 1...")
         LSS1_response = send_receive_CORNERSTONE(LSS1)
         LSS1_message_flag = checkError(LSS1_response)
@@ -652,7 +648,7 @@ class LoadingState(State):
                 elif LSS2_SetKey == "Clamped - Low Pressure":
                     print("Commencing load sample step 3...")
                     #WILL NEED TO SEND PLC A COMMAND TO UNDO THE X-AXIS
-                    send_receive_PLC(ActautePushSample)
+                    send_receive_PLC(ActuatePullSample)
                     break
             self.execute_load_samples3()
 
@@ -670,12 +666,10 @@ class LoadingState(State):
                     self.gui_client_socket.send("Vacuum Error".encode(ENCODER)) #tell gui.py to open vacuum error gui
                 elif LSS3_SetKey == "Loaded":
                     print("Sample Loaded, Commencing Sample Analysis...")
-                    send_receive_PLC(ActuatePullSample)
                     #WILL NEED TO SEND PLC A COMMAND TO UNDO THE X-AXIS
                     break
-            #LOADING STATE COMPLETE, EXECUTE ANALYSIS
-            #transition to analysis state 
-            self.transition_sub_states() #IS THIS THE CORRECT COMMAND?
+            #LOADING STATE COMPLETE, EXECUTE SAMPLE ANALYSIS
+            self.transition_sub_states()
             
 
     def transition_sub_states(self):
@@ -685,16 +679,22 @@ class LoadingState(State):
     
     def handle_try_again(self):
         print("Handling 'try again' command...")
-        # Insert logic to retry the operation that failed
-        # Try the same loading sample step again (whatever step is failed on)
+        X_Pull_Actuate_Response = send_receive_PLC(ActuatePullSample)
+        print(X_Pull_Actuate_Response)
+        self.execute_load_samples1()
 
     def handle_skip_spoke(self):
         print("Handling 'skip spoke' command...")
-        # Insert logic to skip the current operation and move to the next
+        X_Pull_Actuate_Response = send_receive_PLC(ActuatePullSample)
+        print(X_Pull_Actuate_Response)
+        # Add counter set up 
 
     def handle_abort(self):
         print("Handling 'abort' command...")
-        # Insert logic to abort the operation and possibly reset or shutdown
+        X_Pull_Actuate_Response = send_receive_PLC(ActuatePullSample)
+        print(X_Pull_Actuate_Response)
+        self.context.change_state('idle')
+        # Insert logic to reset spoke counter possibly
 
 #############################################
 class SampleAnalysisState(State):
@@ -716,7 +716,7 @@ class SampleAnalysisState(State):
                 AnalysisRunning_state = checkAnalysisValue(SampleAnalysisState_response) 
                 time.sleep(1)
                 if AnalysisRunning_state == "true":  #Still running
-                    continue #Break out of loop and send query again
+                    continue #Continues loop and send query again
                 elif AnalysisRunning_state == "false": #Running complete
                     print('Analysis Complete, Commencing unloading ...')
                     break
@@ -732,72 +732,65 @@ class SampleAnalysisState(State):
 class UnloadingState(State):
     def enter_state(self):
         super().enter_state()
-        self.execute_unload_samples1()
-        self.transition_sub_states()
+        self.execute_unload_sample1()
         
     def handle(self, data):
         print(f"Sent from main GUI: {data}")
 
     def execute_unload_sample1(self):
         print("Commencing UNLOAD sample step 1...")
-        ULSS1_response = send_receive_CORNERSTONE(USS1)
+        USS1_response = send_receive_CORNERSTONE(USS1)
         USS1_message_flag = checkError(USS1_response)
         if USS1_message_flag:
             while True:
                 SampleLoadState_response = send_receive_CORNERSTONE(SampleLoadState_message) #Sends query message to see if step is complete
                 USS1_SetKey = checkStringValue(SampleLoadState_response)
                 time.sleep(1)
-                if USS1_SetKey == "Unclampled":
-                    print("Commencing Unloade sample step 2...")
+                if USS1_SetKey == "Unclamped":
+                    print("Commencing Unload sample step 2...")
                     break
-            self.execute_load_samples2()
+            self.execute_unload_sample2()
 
     def execute_unload_sample2(self):
         print("Commencing UNLOAD sample step 2...")
-        ULSS2_response = send_receive_CORNERSTONE(USS2)
+        USS2_response = send_receive_CORNERSTONE(USS2)
         USS2_message_flag = checkError(USS2_response)
-        if USS1_message_flag:
+        if USS2_message_flag:
             while True:
                 SampleLoadState_response = send_receive_CORNERSTONE(SampleLoadState_message) #Sends query message to see if step is complete
                 USS2_SetKey = checkStringValue(SampleLoadState_response)
                 time.sleep(1)
-                if USS1_SetKey == "Released":
+                if USS2_SetKey == "Released":
                     print("Moving Hardware out of the way")
-                    #ADD SOMETHING HERE THAT COMMANDS THE PLC TO MOVE OUT THE WAY, A SIMPLE STRING
-                    #WILL NEED TO ADD SOMETHING THAT WAITS FOR PLC TO SEND THAT THE MOTORS HAVE COMPETED THEIR MOVEMENT
                     if wagon_wheel == 16:
                         send_receive_PLC(MoveToSafeArea16)
-                    else:
+                    else:  #Current wagon wheel is 8 spoke
                         send_receive_PLC(MoveToSafeArea8)
                     break
-                    
-                    #MAKE SOMETHING HERE THAT WOULD TELL THE PLC THAT IT HAS COMPLETED ITS ENTIRE PROCSS
-
-                    #MAKE ANOTHER IF STATMENT WHERE WE SEE IF WE COMPLETED THE PROCeSS
-                transition_sub_states()
-    
-    def transition_sub_states(self):
-        print("Transitioning to Moving State...")
-        time.sleep(2)
-        self.context.change_sub_state('moving')
-
-##########################################
-class MovingState(State):
-    def enter_state(self):
-        super().enter_state()
-        self.move_home()
-        self.transition_sub_states()
-        
-    def handle(self, data):
-        print(f"Sent from main GUI: {data}")
-
-    def move_home(self):
-        print("Moving sample to home position...")
+            self.transition_sub_states()
     
     def transition_sub_states(self):
         print("Transitioning to Reaming State...")
         time.sleep(2)
         self.context.change_sub_state('reaming')
+
+##########################################
+# class MovingState(State):
+#     def enter_state(self):
+#         super().enter_state()
+#         self.move_home()
+#         self.transition_sub_states()
+        
+#     def handle(self, data):
+#         print(f"Sent from main GUI: {data}")
+
+#     def move_home(self):
+#         print("Moving sample to home position...")
+    
+#     def transition_sub_states(self):
+#         print("Transitioning to Reaming State...")
+#         time.sleep(2)
+#         self.context.change_sub_state('reaming')
 
 ##########################################
 class ReamingState(State):
@@ -819,16 +812,16 @@ class ReamingState(State):
                 Reaming_state = checkReamStateValue(ReamState_response) 
                 time.sleep(1)
                 if Reaming_state == "true":  #Still running
-                    continue #Break out of loop and send query again
+                    continue #Continue loop and send query again
                 elif Reaming_state == "false": #Running complete
-                    print('Reaming Complete, Repeating Loading on new Spoke ...')
+                    #ADD IF ELSE STATEMENT TO DETERMINE IF PROCESS NEEDS TO RUN AGAIN FOR NEXT SPOKE OR DONE
+                    print('Reaming Complete --> Repeating Loading on new Spoke ...')
                     #SEND A MESSAGE TO PLC INDICATING IT TO MOVE TO THE NEXT SPOKE
                     #WE WILL WAIT UNTIL THE PLC RETURNS A MESSAGE SAYING THAT IT HAS COMPLTED MOVING
                     send_receive_PLC(MoveToSpoke)
                     break
             self.transition_sub_states()
 
-    
     def transition_sub_states(self):
         print("Transitioning back to Moving State...")
         time.sleep(2)
