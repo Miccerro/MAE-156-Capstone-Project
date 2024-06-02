@@ -183,6 +183,18 @@ USS1 = '<ExecuteSequence Sequence="Unload Sample Step 2" />'
 Reaming_message = '<ExecuteSequence Sequence="Ream Anode" Cookie="ExecuteSequence" Culture="en-US" />'
 ReamState_message = '<Sequence Name="Ream Anode" Cookie="Sequence" Culture="en-US" />'
 
+
+##PLC MESSAGES:
+AddSamples8Spoke_PLC = 'Spokes8'
+AddSamples8Spoke_PLC = 'Spokes16'
+EnterCalibration_PLC = 'CalibrationOn'
+ExitCalibration_PLC = 'CalibrationOff'
+ActautePushSample = 'PushSample'
+ActautePullSample = 'PullSample'
+MoveToSafeArea8 = 'MoveToSafe8' #NEED TO ADD TO PLC
+MoveToSafeArea16 = 'MoveToSafe16' #NEED TO ADD TO PLC
+MoveToSpoke = 'MoveToSpoke#' #PlaceHolderForNow
+
 ############### Define functions to handle PLC connection and Communication ###############
 def handle_PLC_connection():
     global PLC_socket
@@ -214,13 +226,81 @@ def close_PLC_connection():
 def send_receive_PLC(command): # function to send and receive commands to/from the PLC server
     """Send a command to the PLC and receive the response."""
     global PLC_socket
+    if not PLC_socket: #WHAT IS THE PURPOSE OF THIS IF STATMENT
+        PLC_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        PLC_socket.connect((PLC_IP, PLC_PORT)) 
+
+    encoded = command.encode(ENCODER)
+    length = len(encoded)
+    packed = struct.pack('<I', length)  # Packs the length of the encoded message into binary format
+    # Send data length
+    PLC_socket.send(packed)
+    # Send encoded data
+    PLC_socket.send(encoded)
+    
+    # Read response length
+    responseLengthBytes = b''
+    while len(responseLengthBytes) < 4:
+        more = PLC_socket.recv(4 - len(responseLengthBytes))
+        if not more:
+            raise Exception("Socket connection broken")
+        responseLengthBytes += more
+
+    responseLength = struct.unpack('<I', responseLengthBytes)[0]  # Unpacks received bytes back into integer
+    print("Message Response Length:", responseLength)
+    # Read response data
+    response = b''
+    while len(response) < responseLength:
+        more = PLC_socket.recv(responseLength - len(response))
+        if not more:
+            raise Exception("Socket connection broken")
+        response += more
+
+    print("Message Response:", response.decode(ENCODER))
+    return response.decode(ENCODER)
+
+
+def listen_for_response():
+    global PLC_socket
+    # Ensure the socket is connected
     if not PLC_socket:
         PLC_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         PLC_socket.connect((PLC_IP, PLC_PORT))
-    PLC_socket.sendall(command.encode(ENCODER))
-    # Wait for a response to confirm the action
-    response = PLC_socket.recv(BYTESIZE).decode(ENCODER)
+
+    # Read response length (first 4 bytes)
+    responseLengthBytes = b''
+    while len(responseLengthBytes) < 4:
+        more = PLC_socket.recv(4 - len(responseLengthBytes))
+        if not more:
+            print("Socket connection broken")
+            PLC_socket.close()
+            PLC_socket = None
+            return
+        responseLengthBytes += more
+
+    # Unpack the length of the message
+    responseLength = struct.unpack('<I', responseLengthBytes)[0]
+    print("Message Response Length:", responseLength)
+
+    # Read the actual message based on the length
+    response = b''
+    while len(response) < responseLength:
+        more = PLC_socket.recv(responseLength - len(response))
+        if not more:
+            print("Socket connection broken")
+            PLC_socket.close()
+            PLC_socket = None
+            return
+        response += more
+
+    # Decode the message from bytes to a string
+    response = response.decode(ENCODER)
+    #print("Message Response:", message)
     return response
+
+
+
+
 
 ############### Define functions to handle CORNERSTONE connection and communication ###############
 def handle_CORNERSTONE_connection():
@@ -313,15 +393,15 @@ def Wagon_Wheel_Initialization(data):
     if data == '8-Spoke Wagon Wheel Selected':
         wagon_wheel = 8
         print("Sending 8-spoke selection to PLC...")
-        send_receive_PLC("8-spoke")
+        send_receive_PLC("Spokes8")
     elif data == '16-Spoke Wagon Wheel Selected':
         wagon_wheel = 16
         print("Sending 16-spoke selection to PLC...")
-        send_receive_PLC("16-spoke")
+        send_receive_PLC("Spokes16")
     else:
         # If no button is pressed, it defaults to 8 spokes
         print(f"No Wagon Wheel selection made yet, defaulting to {wagon_wheel}-spoke wheel.")
-        send_receive_PLC("8-spoke")
+        send_receive_PLC("Spokes8")
 
 ################## Define State Classes ####################################################################
 
@@ -352,7 +432,7 @@ class IdleState(State):
         print(f"Idle State: Received '{data}'")
         if data == "calibration on":
             self.context.change_state('calibration')
-            send_receive_PLC(data)
+            #send_receive_PLC('CalibrationOn') #THIS IS REPEATED TWICE I BELEIVE!!!
         elif data == "Start Analysis Process": 
             self.context.change_state('analysis')
         elif data in ['8-Spoke Wagon Wheel Selected', '16-Spoke Wagon Wheel Selected']:
@@ -384,18 +464,25 @@ class CalibrationState(State):
     def handle(self, data):
         if data == "calibration off":
             self.gui_client_socket.send("Calibration Mode: OFF".encode(ENCODER)) #send gui message that automatically turns buttons to off state
-            send_receive_PLC(data) #send PLC calibration mode off
+            send_receive_PLC('CalibrationOff') #send PLC calibration mode off
             self.context.change_state('idle')
 
     def start_calibration_process(self):
         print("Sending Calibration mode command to PLC...")
         self.gui_client_socket.send("Calibration Mode: ON".encode(ENCODER))
-        PLC_response = send_receive_PLC("Enter Calibration Mode")
-        if PLC_response:
+        PLC_response = send_receive_PLC('CalibrationOn')
+        if PLC_response: #PLC Autoamtically sends a message that states that it has entered calibration mode
             self.gui_client_socket.send("Calibration Mode: OFF".encode(ENCODER))
+            calibrationComplete_PLC = listen_for_response() #Waits for PLC to indicate that calibration has been complete
+            #Blocking code, so will not move on until a respose is recieved CAN MAKE INTO IF STATMENT IF WANTED
+            if calibrationComplete_PLC == 'CalibrationComplete':
+                break
+            else:
+                print('we cooked frfr')
             self.context.change_state('idle')
         else:
             print("Calibration failed or not confirmed:", PLC_response)
+
 
 ########################################################################################################################
 class AnalysisState(State):
@@ -533,6 +620,11 @@ class LoadingState(State):
 
 
     def execute_load_samples1(self):
+        #Place command to move the x-axis here. 
+        #basically send PLC A messag to move the x axis only after this command is called for
+        send_receive_PLC(ActautePushSample)
+
+
         print("Commencing sample step 1...")
         LSS1_response = send_receive_CORNERSTONE(LSS1)
         LSS1_message_flag = checkError(LSS1_response)
@@ -562,12 +654,13 @@ class LoadingState(State):
                     # POSSIBLY NEED TO PASS gui_client_socket
                     self.gui_client_socket.send("Vacuum Error".encode(ENCODER)) #tell gui.py to open vacuum error gui
                 elif LSS2_SetKey == "Clamped - Low Pressure":
-                    print("Commencing sample step 3 (Reaming)...")
+                    print("Commencing load sample step 3...")
                     #WILL NEED TO SEND PLC A COMMAND TO UNDO THE X-AXIS
+                    send_receive_PLC(ActautePullSample)
                     break
             self.execute_load_samples3()
 
-    def execute_load_samples3(self): #Will not have an error, as it only reams
+    def execute_load_samples3(self): #Will not have an error as suctiuon has already been created
         print("Commencing sample step 3...")
         LSS3_response = send_receive_CORNERSTONE(LSS3)
         LSS3_message_flag = checkError(LSS3_response)
@@ -675,6 +768,10 @@ class UnloadingState(State):
                     print("Moving Hardware out of the way")
                     #ADD SOMETHING HERE THAT COMMANDS THE PLC TO MOVE OUT THE WAY, A SIMPLE STRING
                     #WILL NEED TO ADD SOMETHING THAT WAITS FOR PLC TO SEND THAT THE MOTORS HAVE COMPETED THEIR MOVEMENT
+                    if wagon_wheel == 16:
+                        send_receive_PLC(MoveToSafeArea16)
+                    else:
+                        send_receive_PLC(MoveToSafeArea8)
                     break
                 transition_sub_states()
     
@@ -726,6 +823,7 @@ class ReamingState(State):
                     print('Reaming Complete, Repeating Loading on new Spoke ...')
                     #SEND A MESSAGE TO PLC INDICATING IT TO MOVE TO THE NEXT SPOKE
                     #WE WILL WAIT UNTIL THE PLC RETURNS A MESSAGE SAYING THAT IT HAS COMPLTED MOVING
+                    send_receive_PLC(MoveToSpoke)
                     break
             self.transition_sub_states()
 
