@@ -599,7 +599,7 @@ class InitializingState(State):
 class LoadingState(State):
     def enter_state(self):
         super().enter_state()
-        self.execute_load_samples2()
+        self.execute_load_samples1()
         self.transition_sub_states()
         #Include the error stuff in this sub-class
 
@@ -656,7 +656,7 @@ class LoadingState(State):
                 elif LSS2_SetKey == "Clamped - Low Pressure":
                     print("Commencing load sample step 3...")
                     #WILL NEED TO SEND PLC A COMMAND TO UNDO THE X-AXIS
-                    send_receive_PLC(ActautePullSample)
+                    send_receive_PLC(ActautePushSample)
                     break
             self.execute_load_samples3()
 
@@ -674,6 +674,7 @@ class LoadingState(State):
                     self.gui_client_socket.send("Vacuum Error".encode(ENCODER)) #tell gui.py to open vacuum error gui
                 elif LSS2_SetKey == "Loaded":
                     print("Sample Loaded, Commencing Sample Analysis...")
+                    send_receive_PLC(ActuatePullSample)
                     #WILL NEED TO SEND PLC A COMMAND TO UNDO THE X-AXIS
                     break
             #LOADING STATE COMPLETE, EXECUTE ANALYSIS
@@ -773,6 +774,10 @@ class UnloadingState(State):
                     else:
                         send_receive_PLC(MoveToSafeArea8)
                     break
+                    
+                    #MAKE SOMETHING HERE THAT WOULD TELL THE PLC THAT IT HAS COMPLETED ITS ENTIRE PROCSS
+
+                    #MAKE ANOTHER IF STATMENT WHERE WE SEE IF WE COMPLETED THE PROCeSS
                 transition_sub_states()
     
     def transition_sub_states(self):
