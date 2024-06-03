@@ -79,6 +79,99 @@ message_response_map = {
     </Replicate>
   </Replicates>
 </AddSamples>''': '<AddSamples ErrorCode="0" ErrorMessage="Success" Cookie="AddSamples" />',
+'''
+    <AddSamples Cookie="AddSamples" Culture="en-US">
+  <Set>
+    <Field Id="SampleType">Sample</Field>
+    <Field Id="Name">PyTese2.1</Field>
+    <Field Id="Description"></Field>
+    <Field Id="MethodKey">0</Field>
+    <Field Id="StandardKey">0</Field>
+  </Set>
+  <Replicates>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke1</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke2</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke3</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke4</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke5</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke6</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke7</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke8</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke9</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke10</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke11</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke12</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke13</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke14</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke15</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+    <Replicate>
+      <Field Id="Mass">1.0</Field>
+      <Field Id="Comments">Spoke16</Field>
+      <Field Id="Location"></Field>
+    </Replicate>
+  </Replicates>
+</AddSamples>
+''': '<AddSamples ErrorCode="0" ErrorMessage="Success" Cookie="AddSamples" />',
     '<LastRemoteAddedSets Cookie="LastRemoteAddedSets" Culture="en-US" />': '<LastRemoteAddedSets ErrorCode="0" ErrorMessage="Success" Cookie="LastRemoteAddedSets"><Set Key="0000000000007987" /></LastRemoteAddedSets>',
     '<AssignNextToAnalyze SetKey="0000000000007987" ReplicateTag="0" />': '<AssignNextToAnalyze ErrorCode="0" ErrorMessage="Success" Cookie="AssignNextToAnalyze" />',
     '<AutoAnalyze State="DISABLED" />': '<AutoAnalyze ErrorCode="0" ErrorMessage="Success"/>',
