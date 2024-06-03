@@ -2,6 +2,7 @@ import socket
 import time
 import threading
 import struct
+import subprocess
 import xml.etree.ElementTree as ET
 #import cornerstone_commands
 
@@ -194,7 +195,6 @@ ActuatePushSample = 'PushSample'
 ActuatePullSample = 'PullSample'
 MoveToSafeArea8 = 'MoveToSafe8' #NEED TO ADD TO PLC
 MoveToSafeArea16 = 'MoveToSafe16' #NEED TO ADD TO PLC
-MoveToSpoke = 'MoveToSpoke#' #PlaceHolderForNow
 
 ############### Define functions to handle PLC connection and Communication ###############
 def handle_PLC_connection():
@@ -315,6 +315,16 @@ def handle_CORNERSTONE_connection():
             CORNERSTONE_socket.close()
             CORNERSTONE_socket = None
         return False
+
+#Sends logon information to cornerstone
+def send_logon():
+        print("sending logon information to Cornerstone...")
+        login_response = send_receive_CORNERSTONE(Login_Password_XML)
+        if 'Success' in login_response:
+            print("Initialization State: Login successful.")
+        else:
+            print("Initialization State:Login failed.")
+        # Possibly add command to send heartbeat to make sure connection has been established to cornerstone
     
 #Check Error is not a query. It recieves the response when we send any message. It only tells us if the GDS
 #recieved the message and if it is in the correct syntax
@@ -443,6 +453,7 @@ class IdleState(State):
         elif data == "connect cornerstone request":
             # Simulate socket connection operation to Cornerstone then sends confirmation upon connection to gui
             CORNERSTONE_connection_status = handle_CORNERSTONE_connection()
+            send_logon()
             if CORNERSTONE_connection_status:
                 print("Sending to GUI 'Cornerstone Connected'")
                 gui_response = 'Cornerstone Connected'
@@ -499,17 +510,26 @@ class AnalysisState(State):
         }
         self.current_sub_state = self.sub_states['initializing'] # can be thought of as context_sub_state
         self.is_active = False  # Initialize the is_active attribute to control process initiation
+        self.spoke_counter = 1  # Add a spoke counter
+        self.total_spokes = 8  # Default value, will be updated based on the selected wagon wheel
+        self.initialization_complete = False  #initialization flag to help in tracking if initialization has run already
 
     def enter_state(self):
         super().enter_state()
+        global wagon_wheel
         self.current_sub_state = self.sub_states['initializing'] #Every time analysis state is entered it always starts in initializing state
         self.current_sub_state.enter_state()
         self.is_active = True
+        self.spoke_counter = 1  # Reset spoke counter when entering the state
+        self.total_spokes = 8 if wagon_wheel == 8 else 16  # Set total spokes based on selected wagon wheel
         self.start_analysis_processes()
 
     def start_analysis_processes(self):
-        print("Starting initialization of analysis process")
-        self.current_sub_state = self.sub_states['initializing'] 
+        print("Starting analysis process")
+        if not self.initialization_complete:
+            self.current_sub_state = self.sub_states['initializing']
+        else:
+            self.current_sub_state = self.sub_states['loading']
         self.current_sub_state.enter_state()
 
     def handle(self, data): #This is where you put what will occur when a certain message is sent to server when code is in this current state
@@ -526,21 +546,35 @@ class AnalysisState(State):
                 self.start_analysis_processes()
             else:
                 print("Analysis is already running.")
-        elif data == "stop analysis":
+        elif data == "stop analysis": #Probably don't need this but might add stop analysis button to GUI
             print("Stopping analysis processes...")
             self.context.change_state('idle')  # Optionally switch to idle state
             self.is_active = False
+            self.initialization_complete = False  # Optionally reset initialization on stop
     
     def change_sub_state(self, sub_state_key):
         if sub_state_key in self.sub_states:
             self.current_sub_state = self.sub_states[sub_state_key]
             self.current_sub_state.enter_state()
 
-########################################
+    def next_spoke(self):
+        self.spoke_counter += 1
+        self.gui_client_socket.send(str(self.spoke_counter).encode(ENCODER))  # send current spoke to GUI
+        if self.spoke_counter > self.total_spokes:
+            print("All spokes analyzed. Transitioning to Idle State...")
+            self.context.change_state('idle')
+            self.is_active = False
+            self.initialization_complete = False  # Optionally reset initialization when complete
+            send_receive_PLC("Wagon Wheel Analysis Completed")
+        else:
+            print(f"Moving to next spoke: {self.spoke_counter}/{self.total_spokes}")
+            self.current_sub_state = self.sub_states['loading']
+            self.current_sub_state.enter_state()
+
+########################################  SUB-STATES OF ANALYSIS STATE  ######################################## 
 class InitializingState(State):
     def enter_state(self):
         super().enter_state()
-        self.send_logon()
         self.add_samples()
 
     def handle(self, data):
@@ -550,41 +584,34 @@ class InitializingState(State):
         global wagon_wheel
         print(f"Adding {wagon_wheel} Samples...")
         if wagon_wheel == 16:
-            addSample_response = send_receive_CORNERSTONE(AddSample16Spoke_XML)
-            addSample_message_flag = checkError(addSample_response) # bool TRUE if success in message
-            if addSample_message_flag:
-                print("Commencing LRAS...")
-                LRAS_response = send_receive_CORNERSTONE(LRAS_message)
-                # Parse the original XML message
-                root = ET.fromstring(LRAS_response)
-                # Extract the value of the 'Key' attribute
-                set_key = root.find('.//Set').get('Key')
-                # New XML message
-                ANTA_message = f'<AssignNextToAnalyze SetKey="{set_key}" ReplicateTag="0" />'
-                ANTA_response = send_receive_CORNERSTONE(ANTA_message) 
-                ANTA_message_flag = checkError(ANTA_response)
-                if ANTA_message_flag:
-                    print("Commencing disable auto-analyze")
-                    DAA_response = send_receive_CORNERSTONE(DAA_message)
-                    DAA_message_flag = checkError(DAA_response)
-                    if DAA_message_flag:
-                        #transition to loading state 
-                        self.transition_sub_states()
-            else:
-                #ADD POSSIBLE ERROR STATE OR GO BACK TO IDLE STATE
-                print("We screwed fs")
+            Sample_message = AddSample16Spoke_XML
         else:
-            addSample_response = send_receive_CORNERSTONE(AddSample8Spoke_XML)
-        # Not sure but possibly need to add funcitonality to recieve messages
-
-    def send_logon(self):
-        print("sending logon information to Cornerstone...")
-        login_response = send_receive_CORNERSTONE(Login_Password_XML)
-        if 'Success' in login_response:
-            print("Initialization State: Login successful.")
+            Sample_message = AddSample8Spoke_XML
+           
+        addSample_response = send_receive_CORNERSTONE(Sample_message)
+        addSample_message_flag = checkError(addSample_response) # bool TRUE if success in message
+        if addSample_message_flag:
+            print("Commencing LRAS...")
+            LRAS_response = send_receive_CORNERSTONE(LRAS_message)
+            # Parse the original XML message
+            root = ET.fromstring(LRAS_response)
+            # Extract the value of the 'Key' attribute
+            set_key = root.find('.//Set').get('Key')
+            # New XML message
+            ANTA_message = f'<AssignNextToAnalyze SetKey="{set_key}" ReplicateTag="0" />'
+            ANTA_response = send_receive_CORNERSTONE(ANTA_message) 
+            ANTA_message_flag = checkError(ANTA_response)
+            if ANTA_message_flag:
+                print("Commencing disable auto-analyze")
+                DAA_response = send_receive_CORNERSTONE(DAA_message)
+                DAA_message_flag = checkError(DAA_response)
+                if DAA_message_flag:
+                    #transition to loading state
+                    self.context.initialization_complete = True  # Set initialization flag 
+                    self.transition_sub_states()
         else:
-            print("Initialization State:Login failed.")
-        # Possibly add command to send heartbeat to make sure connection has been established to cornerstone
+            #ADD POSSIBLE ERROR STATE OR GO BACK TO IDLE STATE
+            print("We screwed fs")
 
     def transition_sub_states(self):
         # Assuming the next state after initialization is 'loading'
@@ -596,8 +623,9 @@ class InitializingState(State):
 class LoadingState(State):
     def enter_state(self):
         super().enter_state()
-        self.execute_load_samples1()
-        #Include the error stuff in this sub-class
+        current_spoke = self.context.spoke_counter
+        print(f"Loading sample for spoke: {current_spoke}")
+        self.move_wagon_wheel()
 
     def handle(self, data):
         print(f"Sent from main GUI: {data}")
@@ -611,10 +639,15 @@ class LoadingState(State):
             self.handle_abort()
             print("Aborting Process")
 
+    def move_wagon_wheel(self):
+        WW_movement_response = send_receive_PLC(f"MoveToSpoke{self.context.spoke_counter}")
+        if WW_movement_response == f"MovedToSpoke{self.context.spoke_counter}":
+            self.execute_load_samples1()
+        else:
+            print("RIP")
 
     def execute_load_samples1(self):
-        #Place command to move the x-axis here. 
-        #basically send PLC A messag to move the x axis only after this command is called for
+        #Sends PLC a message to move the sample into GDS anode only after this command is called for
         X_Actuate_Response = send_receive_PLC(ActuatePushSample)
         print(X_Actuate_Response)
         print("Commencing sample step 1...")
@@ -687,14 +720,14 @@ class LoadingState(State):
         print("Handling 'skip spoke' command...")
         X_Pull_Actuate_Response = send_receive_PLC(ActuatePullSample)
         print(X_Pull_Actuate_Response)
-        # Add counter set up 
+        self.context.next_spoke()
 
     def handle_abort(self):
         print("Handling 'abort' command...")
         X_Pull_Actuate_Response = send_receive_PLC(ActuatePullSample)
         print(X_Pull_Actuate_Response)
         self.context.change_state('idle')
-        # Insert logic to reset spoke counter possibly
+        
 
 #############################################
 class SampleAnalysisState(State):
@@ -814,18 +847,12 @@ class ReamingState(State):
                 if Reaming_state == "true":  #Still running
                     continue #Continue loop and send query again
                 elif Reaming_state == "false": #Running complete
-                    #ADD IF ELSE STATEMENT TO DETERMINE IF PROCESS NEEDS TO RUN AGAIN FOR NEXT SPOKE OR DONE
-                    print('Reaming Complete --> Repeating Loading on new Spoke ...')
-                    #SEND A MESSAGE TO PLC INDICATING IT TO MOVE TO THE NEXT SPOKE
-                    #WE WILL WAIT UNTIL THE PLC RETURNS A MESSAGE SAYING THAT IT HAS COMPLTED MOVING
-                    send_receive_PLC(MoveToSpoke)
                     break
             self.transition_sub_states()
 
     def transition_sub_states(self):
-        print("Transitioning back to Moving State...")
-        time.sleep(2)
-        self.context.change_sub_state('moving')
+        self.context.next_spoke()
+        
 
 ##########################################################################################################
 # The Context class manages the high-level state transitions (like between IdleState, AnalysisState, and CalibrationState)
@@ -894,145 +921,11 @@ class Server:
 # Creating server instance 
 if __name__ == "__main__":
     server = Server()
-    server.run()
+    server_thread = threading.Thread(target=server.run)
+    server_thread.start()
 
-# # Define function to handle PLC connection
-# def handle_plc_connection():
-#     print("Connecting to PLC...")
-#     time.sleep(2)
-#     print("PLC connection established")
-#     # Add your actual PLC connection code here
-#     return "PLC Connected"  # Return message indicating success
+    # Wait for the server to start
+    time.sleep(2)
 
-# # Define function to handle Cornerstone connection
-# def handle_cornerstone_connection():
-#     print("Connecting to Cornerstone...")
-#     time.sleep(2)
-#     print("Cornerstone connection established")
-#     # Add your actual Cornerstone connection code here
-#     return "Cornerstone Connected"  # Return message indicating success
-
-# # Define State Classes
-# class State:
-#     def __init__(self, context):
-#         self.context = context
-
-#     def handle(self, data):
-#         raise NotImplementedError("Handle method not implemented.")
-
-# class IdleState(State):
-#     def handle(self, data):
-#         if data == "Connect to PLC":
-#             self.context.plc.connect()
-#         elif data == "Connect to CornerStone":
-#             self.context.cornerstone.connect()
-#         # Additional handlers for idle state
-
-# class CalibrationState(State):
-#     def handle(self, data):
-#         # Handle calibration mode activation, adjustments, etc.
-#         pass
-
-# class AnalysisState(State):
-#     def handle(self, data):
-#         if data == "Start Analysis Process":
-#             print("Analysis state activated. Beginning XML commands execution.")
-#             self.run_xml_commands()
-
-#     def run_xml_commands(self):
-#         # Placeholder for the series of functions that send XML commands
-#         print("Sending XML command 1...")
-#         # simulate sending XML command
-#         print("Sending XML command 2...")
-#         # simulate sending another XML command
-#         # Add more as needed
-
-
-# # Nested states for analysis
-# class InitializingState(State):
-#     def handle(self, data):
-#         # Send XML to Cornerstone to initialize sample count
-#         pass
-
-# class LoadingState(State):
-#     def handle(self, data):
-#         # Logic to handle loading including error checking
-#         pass
-
-# class SampleAnalysisState(State):
-#     def handle(self, data):
-#         # Handle sample analysis
-#         pass
-    
-# # More nested states as needed...
-# class ServerContext:
-#     def __init__(self):
-#         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-#         self.server_socket.bind((HOST_IP, HOST_PORT))
-#         self.server_socket.listen()
-#         self.client_socket, self.client_address = self.server_socket.accept()
-#         self.client_socket.send("You are connected to the server...\n".encode(ENCODER))
-
-#         self.states = {
-#             'idle': IdleState(self),
-#             'calibration': CalibrationState(self),
-#             'analysis': AnalysisState(self)
-#         }
-#         self.state = self.states['idle']  # Start in idle state
-
-#     def switch_state(self, state_key):
-#         if state_key in self.states:
-#             self.state = self.states[state_key]
-#             print(f"Switched to {state_key} state.")
-
-
-#     def run(self):
-#         try:
-#             while True:
-#                 message = self.client_socket.recv(BYTESIZE).decode(ENCODER)
-#                 if message == '8-Spoke Wagon Wheel Selected':
-#                     #INSERT FUNCTION TO SEND 8 SPOKE SELECTION TO PLC
-#                     print(message)
-#                 elif message == '16-Spoke Wagon Wheel Selected':
-#                     #INSERT FUNCTION TO SEND 16 SPOKE SELECTION TO PLC
-#                     print(message)
-#                 elif message == 'calibration on':
-#                     self.switch_state('calibration')
-#                     print(message)
-#                     #sends string that overrides manual button press causing ON state
-#                     self.client_socket.send("Calibration Mode: ON".encode(ENCODER))
-#                     #INSERT FUNCTION TO SEND CALIBRATION MODE ON TO PLC
-#                     # When finished with calibrating use: self.client_socket.send("Calibration Mode: OFF".encode(ENCODER))
-#                     # to send gui message that automatically turns buttons to off state                      
-#                 elif message == 'calibration off':
-#                     self.switch_state('idle')
-#                     print(message)
-#                      #sends string that overrides manual button press causing OFF state
-#                     self.client_socket.send("Calibration Mode: OFF".encode(ENCODER))
-#                     #INSERT FUNCTION TO SEND CALIBRATION MODE OFF TO PLC 
-#                 elif message == "connect plc request":
-#                     # Simulate socket connection operation to PLC then sends confirmation upon connection to gui
-#                     response = handle_plc_connection()
-#                     self.client_socket.send(response.encode(ENCODER))
-#                 elif message == "connect cornerstone request":
-#                     # Simulate socket connection operation to Cornerstone then sends confirmation upon connection to gui
-#                     response = handle_cornerstone_connection()
-#                     self.client_socket.send(response.encode(ENCODER))
-#                 elif message == 'quit':
-#                     self.client_socket.send("quit".encode(ENCODER))
-#                     print("Server stopping...")
-#                     break
-#                 else:
-#                     self.client_socket.recv(BYTESIZE).decode(ENCODER)
-#                     self.state.handle(message)
-#         finally:
-#             self.client_socket.close()
-#             self.server_socket.close()
-
-
-# if __name__ == "__main__":
-#     context = ServerContext()
-#     context.run()
-
-#### GUI Tests ####
-
+    # Start the GUI
+    subprocess.Popen(["python", r"C:\Users\micah\OneDrive\MAE 156\Capstone Project\MAE-156-Capstone-Project\API_Test\build\GUI.py"])  #CHANGE TO ACTUAL PATH
