@@ -401,13 +401,16 @@ if __name__ == "__main__":
 
     ##################### ERROR GUI Function to call upon when vacuum error occurs #######################
     def open_error_window():
-        error_window = Toplevel(window)
-        error_window.title("API ERROR")
-        error_window.geometry("303x376")
-        error_window.configure(bg="#1F1F1F")
+        if hasattr(open_error_window, 'window') and open_error_window.window.winfo_exists():
+            return  # Error window is already open
+
+        open_error_window.window = Toplevel(window)
+        open_error_window.window.title("API ERROR")
+        open_error_window.window.geometry("303x376")
+        open_error_window.window.configure(bg="#1F1F1F")
 
         def close_error_window():
-            error_window.destroy()
+            open_error_window.window.destroy()
 
         def handle_error_response(command):
             print(f"Sending {command} to the server...")
@@ -415,7 +418,7 @@ if __name__ == "__main__":
             close_error_window()  # Close the error window after sending command
 
         # Create a new canvas specifically for the error window
-        error_canvas = Canvas(error_window, bg="#1F1F1F", height=376, width=303, bd=0, highlightthickness=0, relief="ridge")
+        error_canvas = Canvas(open_error_window.window, bg="#1F1F1F", height=376, width=303, bd=0, highlightthickness=0, relief="ridge")
         error_canvas.place(x=0, y=0)
         error_canvas.create_rectangle(
             0.0,
@@ -497,7 +500,7 @@ if __name__ == "__main__":
         button_image_1e = PhotoImage(
             file=relative_to_assets("button_1e.png"))
         button_1e = Button(
-            error_canvas,
+            open_error_window.window,
             image=button_image_1e,
             borderwidth=0,
             highlightthickness=0,
@@ -515,7 +518,7 @@ if __name__ == "__main__":
         button_image_2e = PhotoImage(
             file=relative_to_assets("button_2e.png"))
         button_2e = Button(
-            error_canvas,
+            open_error_window.window,
             image=button_image_2e,
             borderwidth=0,
             highlightthickness=0,
@@ -533,7 +536,7 @@ if __name__ == "__main__":
         button_image_3e = PhotoImage(
             file=relative_to_assets("button_3e.png"))
         button_3e = Button(
-            error_canvas,
+            open_error_window.window,
             image=button_image_3e,
             borderwidth=0,
             highlightthickness=0,

@@ -16,19 +16,8 @@ analyze_in_progress = False
 ream_anode_state = 0  # New state variable for the Ream Anode sequence
 logged_in = False  # Track if the client is logged in
 
-# Define state-based response mapping
-state_response_map = {
-    'Load Sample Step 1': '<StringValue ErrorCode="0" ErrorMessage="Success" Name="Sample Load State" Value="Evacuated" Cookie="StringValue" />',
-    'Load Sample Step 2': '<StringValue ErrorCode="0" ErrorMessage="Success" Name="Sample Load State" Value="Clamped - Low Pressure" Cookie="StringValue" />',
-    'Load Sample Step 3': '<StringValue ErrorCode="0" ErrorMessage="Success" Name="Sample Load State" Value="Loaded" Cookie="StringValue" />',
-    'Unload Sample Step 1': '<StringValue ErrorCode="0" ErrorMessage="Success" Name="Sample Load State" Value="Unclamped" Cookie="StringValue" />',
-    'Unload Sample Step 2': '<StringValue ErrorCode="0" ErrorMessage="Success" Name="Sample Load State" Value="Released" Cookie="StringValue" />'
-}
-
-# Define message-response mapping
-message_response_map = {
-    '<Logon User="156a" Password="156a156a"/>': '<Logon ErrorCode="0" ErrorMessage="Success" Cookie="Logon" />',
-    '''<AddSamples Cookie="AddSamples" Culture="en-US">
+AddSample8Spoke_XML = '''
+    <AddSamples Cookie="AddSamples" Culture="en-US">
   <Set>
     <Field Id="SampleType">Sample</Field>
     <Field Id="Name">PyTese2.1</Field>
@@ -78,8 +67,10 @@ message_response_map = {
       <Field Id="Location"></Field>
     </Replicate>
   </Replicates>
-</AddSamples>''': '<AddSamples ErrorCode="0" ErrorMessage="Success" Cookie="AddSamples" />',
+</AddSamples>
 '''
+
+AddSample16Spoke_XML = '''
     <AddSamples Cookie="AddSamples" Culture="en-US">
   <Set>
     <Field Id="SampleType">Sample</Field>
@@ -171,7 +162,31 @@ message_response_map = {
     </Replicate>
   </Replicates>
 </AddSamples>
-''': '<AddSamples ErrorCode="0" ErrorMessage="Success" Cookie="AddSamples" />',
+'''
+
+# # Define state-based response mapping NO VACUUM ERROR
+# state_response_map = {
+#     'Load Sample Step 1': '<StringValue ErrorCode="0" ErrorMessage="Success" Name="Sample Load State" Value="Evacuated" Cookie="StringValue" />',
+#     'Load Sample Step 2': '<StringValue ErrorCode="0" ErrorMessage="Success" Name="Sample Load State" Value="Clamped - Low Pressure" Cookie="StringValue" />',
+#     'Load Sample Step 3': '<StringValue ErrorCode="0" ErrorMessage="Success" Name="Sample Load State" Value="Loaded" Cookie="StringValue" />',
+#     'Unload Sample Step 1': '<StringValue ErrorCode="0" ErrorMessage="Success" Name="Sample Load State" Value="Unclamped" Cookie="StringValue" />',
+#     'Unload Sample Step 2': '<StringValue ErrorCode="0" ErrorMessage="Success" Name="Sample Load State" Value="Released" Cookie="StringValue" />'
+# }
+
+# Define state-based response mapping WITH VACUUM ERROR
+state_response_map = {
+    'Load Sample Step 1': '<StringValue ErrorCode="0" ErrorMessage="Success" Name="Sample Load State" Value="Error: pressure evacuation timeout" Cookie="StringValue" />',
+    'Load Sample Step 2': '<StringValue ErrorCode="0" ErrorMessage="Success" Name="Sample Load State" Value="Clamped - Low Pressure" Cookie="StringValue" />',
+    'Load Sample Step 3': '<StringValue ErrorCode="0" ErrorMessage="Success" Name="Sample Load State" Value="Loaded" Cookie="StringValue" />',
+    'Unload Sample Step 1': '<StringValue ErrorCode="0" ErrorMessage="Success" Name="Sample Load State" Value="Unclamped" Cookie="StringValue" />',
+    'Unload Sample Step 2': '<StringValue ErrorCode="0" ErrorMessage="Success" Name="Sample Load State" Value="Released" Cookie="StringValue" />'
+}
+
+# Define message-response mapping
+message_response_map = { 
+    '<Logon User="156a" Password="156a156a"/>': '<Logon ErrorCode="0" ErrorMessage="Success" Cookie="Logon" />',
+    AddSample8Spoke_XML : '<AddSamples ErrorCode="0" ErrorMessage="Success" Cookie="AddSamples" />',
+    AddSample8Spoke_XML : '<AddSamples ErrorCode="0" ErrorMessage="Success" Cookie="AddSamples" />',
     '<LastRemoteAddedSets Cookie="LastRemoteAddedSets" Culture="en-US" />': '<LastRemoteAddedSets ErrorCode="0" ErrorMessage="Success" Cookie="LastRemoteAddedSets"><Set Key="0000000000007987" /></LastRemoteAddedSets>',
     '<AssignNextToAnalyze SetKey="0000000000007987" ReplicateTag="0" />': '<AssignNextToAnalyze ErrorCode="0" ErrorMessage="Success" Cookie="AssignNextToAnalyze" />',
     '<AutoAnalyze State="DISABLED" />': '<AutoAnalyze ErrorCode="0" ErrorMessage="Success"/>',

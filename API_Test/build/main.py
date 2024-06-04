@@ -24,6 +24,7 @@ CORNERSTONE_socket = None  # Variable to track CornerStone connection
 
 # Cornerstone XML Message variables
 Login_Password_XML = '<Logon User="156a" Password="156a156a"/>'
+
 AddSample8Spoke_XML = '''
     <AddSamples Cookie="AddSamples" Culture="en-US">
   <Set>
@@ -77,6 +78,7 @@ AddSample8Spoke_XML = '''
   </Replicates>
 </AddSamples>
 '''
+
 AddSample16Spoke_XML = '''
     <AddSamples Cookie="AddSamples" Culture="en-US">
   <Set>
@@ -247,7 +249,7 @@ def send_receive_PLC(command): # function to send and receive commands to/from t
         responseLengthBytes += more
 
     responseLength = struct.unpack('<I', responseLengthBytes)[0]  # Unpacks received bytes back into integer
-    print("Message Response Length:", responseLength)
+    #print("Message Response Length:", responseLength)
     # Read response data
     response = b''
     while len(response) < responseLength:
@@ -256,7 +258,7 @@ def send_receive_PLC(command): # function to send and receive commands to/from t
             raise Exception("Socket connection broken")
         response += more
 
-    print("Message Response:", response.decode(ENCODER))
+    print("PLC Response:", response.decode(ENCODER))
     return response.decode(ENCODER)
 
 
@@ -332,8 +334,9 @@ def checkError(error_response):
   error_message = root.attrib.get('ErrorMessage') #Isolate ErrorMessage
   #CHANGE MESSAGE SEEN
   if error_message == "Success":
-      print("Logon Successful")
-      return True
+    element_name = root.tag
+    print(f"{element_name} Ran Successfully")
+    return True
       #SIMPLY MOVE ON
   else:
       print("Logon failed: ", error_message)
@@ -360,7 +363,7 @@ def checkReamStateValue(ReamState_response):
 
 def checkAnalysisValue(SampleAnalysisState_response):
     root = ET.fromstring(SampleAnalysisState_response) # Parse the XML message
-    analysis_running_state = root.attrib.get('Running') # Get the 'Running' attribute
+    analysis_running_state = root.attrib.get('Value') # Get the 'Running' attribute
     print(analysis_running_state)
     return analysis_running_state
 
@@ -587,9 +590,8 @@ class InitializingState(State):
             Sample_message = AddSample16Spoke_XML
         else:
             Sample_message = AddSample8Spoke_XML
-           
+        print(f"Sending to CornerStone: {Sample_message}")   
         addSample_response = send_receive_CORNERSTONE(Sample_message)
-        print(f"Adding sample response from Cornerstone: {addSample_response}")
         addSample_message_flag = checkError(addSample_response) # bool TRUE if success in message
         if addSample_message_flag:
             print("Commencing LRAS...")
@@ -655,17 +657,18 @@ class LoadingState(State):
         LSS1_response = send_receive_CORNERSTONE(LSS1)
         LSS1_message_flag = checkError(LSS1_response)
         if LSS1_message_flag:
+            error_detected = False
             while True:
                 SampleLoadState_response = send_receive_CORNERSTONE(SampleLoadState_message) #Sends query message to see if step is complete
                 LSS1_SetKey = checkStringValue(SampleLoadState_response)
                 time.sleep(1)
                 if LSS1_SetKey == "Error: pressure evacuation timeout":
-                    # POSSIBLY NEED TO PASS gui_client_socket
-                    self.gui_client_socket.send("Vacuum Error".encode(ENCODER)) #tell gui.py to open vacuum error gui
-                elif LSS1_SetKey == "Evacuated":
-                    print("Commencing sample step 2...")
+                    if not error_detected:
+                        self.gui_client_socket.send("Vacuum Error".encode(ENCODER)) #tell gui.py to open vacuum error gui
+                        error_detected = True
                     break
-            self.execute_load_samples2()
+            if not error_detected:
+                self.execute_load_samples2()
 
     def execute_load_samples2(self):
         print("Commencing sample step 2...")
@@ -781,7 +784,6 @@ class UnloadingState(State):
                 USS1_SetKey = checkStringValue(SampleLoadState_response)
                 time.sleep(1)
                 if USS1_SetKey == "Unclamped":
-                    print("Commencing Unload sample step 2...")
                     break
             self.execute_unload_sample2()
 
@@ -866,15 +868,19 @@ class Context:
             'calibration': CalibrationState(self, gui_client_socket)
         }
         self.state = self.states['idle']
-    
-    def change_state(self, trans_state_name): # method that dictates transition between analysis, calibration, and idle states 
+
+    def change_state(self, trans_state_name):  # method that dictates transition between analysis, calibration, and idle states
         # Conditions to allow state transition
-        if self.state.name == "Idle State" and (trans_state_name == 'calibration' or trans_state_name == 'analysis'):
+        if trans_state_name == 'idle':
+            print(f"Context: Transitioning from {self.state.name} to {trans_state_name} state.")
+            self.state = self.states[trans_state_name]
+            self.state.enter_state()
+        elif self.state.name == "Idle State" and (trans_state_name == 'calibration' or trans_state_name == 'analysis'):
             print(f"Context: Transitioning from {self.state.name} to {trans_state_name} state.")
             self.state = self.states[trans_state_name]
             self.state.enter_state()
         elif (self.state.name == "Calibration State" or self.state.name == "Analysis State") and trans_state_name == 'idle':
-            if self.state.name == "Analysis State" and trans_state_name == "analysis": #if press analysis button twice doesn't let you change states
+            if self.state.name == "Analysis State" and trans_state_name == "analysis":  # if press analysis button twice doesn't let you change states
                 print("Already in Analysis State...")
             else:
                 print(f"Context: Transitioning from {self.state.name} to {trans_state_name} state.")
@@ -882,6 +888,22 @@ class Context:
                 self.state.enter_state()
         else:
             print("Transition not allowed: Must return to Idle state first or only transition to Idle from current state.")
+    
+    # def change_state(self, trans_state_name): # method that dictates transition between analysis, calibration, and idle states 
+    #     # Conditions to allow state transition
+    #     if self.state.name == "Idle State" and (trans_state_name == 'calibration' or trans_state_name == 'analysis'):
+    #         print(f"Context: Transitioning from {self.state.name} to {trans_state_name} state.")
+    #         self.state = self.states[trans_state_name]
+    #         self.state.enter_state()
+    #     elif (self.state.name == "Calibration State" or self.state.name == "Analysis State") and trans_state_name == 'idle':
+    #         if self.state.name == "Analysis State" and trans_state_name == "analysis": #if press analysis button twice doesn't let you change states
+    #             print("Already in Analysis State...")
+    #         else:
+    #             print(f"Context: Transitioning from {self.state.name} to {trans_state_name} state.")
+    #             self.state = self.states[trans_state_name]
+    #             self.state.enter_state()
+    #     else:
+    #         print("Transition not allowed: Must return to Idle state first or only transition to Idle from current state.")
 
     def handle(self, data):
         self.state.handle(data)
