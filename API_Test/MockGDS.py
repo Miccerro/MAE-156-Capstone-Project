@@ -173,6 +173,7 @@ AddSample16Spoke_XML = '''
 #     'Unload Sample Step 2': '<StringValue ErrorCode="0" ErrorMessage="Success" Name="Sample Load State" Value="Released" Cookie="StringValue" />'
 # }
 
+
 # Define state-based response mapping WITH VACUUM ERROR
 state_response_map = {
     'Load Sample Step 1': '<StringValue ErrorCode="0" ErrorMessage="Success" Name="Sample Load State" Value="Error: pressure evacuation timeout" Cookie="StringValue" />',

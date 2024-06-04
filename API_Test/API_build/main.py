@@ -644,10 +644,11 @@ class LoadingState(State):
 
     def move_wagon_wheel(self):
         WW_movement_response = send_receive_PLC(f"MoveToSpoke{self.context.spoke_counter}")
-        if WW_movement_response == f"MovedToSpoke{self.context.spoke_counter}":
-            self.execute_load_samples1()
-        else:
-            print("RIP")
+        # if WW_movement_response == f"MovedToSpoke{self.context.spoke_counter}":
+        #     self.execute_load_samples1()
+        # else:
+        #     print("RIP")
+        self.execute_load_samples1()
 
     def execute_load_samples1(self):
         #Sends PLC a message to move the sample into GDS anode only after this command is called for
@@ -951,4 +952,4 @@ if __name__ == "__main__":
     time.sleep(2)
 
     # Start the GUI
-    subprocess.Popen(["python", r"C:\Users\micah\OneDrive\MAE 156\Capstone Project\MAE-156-Capstone-Project\API_Test\build\GUI.py"])  #CHANGE TO ACTUAL PATH
+    subprocess.Popen(["python", r"C:\Users\micah\OneDrive\MAE 156\Capstone Project\MAE-156-Capstone-Project\API_Test\API_build\GUI.py"])  #CHANGE TO ACTUAL PATH
