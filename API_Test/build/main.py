@@ -202,11 +202,10 @@ def handle_PLC_connection():
     PLC_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         PLC_socket.connect((PLC_IP, PLC_PORT))
-        PLC_socket.sendall("connect plc".encode(ENCODER))
-        # Wait for a response to confirm connection
-        response = PLC_socket.recv(BYTESIZE).decode(ENCODER)
+        response = send_receive_PLC('connect plc')
         print(response)  # Should print "PLC Connection Established"
         print("PLC connection established")
+        time.sleep(1)
         Wagon_Wheel_Initialization(data='default')
         return "PLC Connected"  # Return message indicating success
     except socket.error as e:
@@ -474,6 +473,7 @@ class CalibrationState(State):
         if data == "calibration off":
             self.gui_client_socket.send("Calibration Mode: OFF".encode(ENCODER)) #send gui message that automatically turns buttons to off state
             send_receive_PLC('CalibrationOff') #send PLC calibration mode off
+            print("Calibration State: Returning to Idle")
             self.context.change_state('idle')
 
     def start_calibration_process(self):
@@ -589,6 +589,7 @@ class InitializingState(State):
             Sample_message = AddSample8Spoke_XML
            
         addSample_response = send_receive_CORNERSTONE(Sample_message)
+        print(f"Adding sample response from Cornerstone: {addSample_response}")
         addSample_message_flag = checkError(addSample_response) # bool TRUE if success in message
         if addSample_message_flag:
             print("Commencing LRAS...")
