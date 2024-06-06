@@ -427,6 +427,9 @@ class State: # base parent state for all states
     def enter_state(self): # Every state class must have an enter state method
         # This method can be overridden by the same method within a subclass
         print(f"{type(self).__name__} Entered!!!")
+    
+    def is_current_state(self):
+        return self.context.current_sub_state == self
 
 ########################################################################################################################
 class IdleState(State):
@@ -509,31 +512,26 @@ class AnalysisState(State):
             'sample analyzing': SampleAnalysisState(self, gui_client_socket, name = 'Analysis Sub-State: Sample Analyze State'),
             'unloading': UnloadingState(self, gui_client_socket, name = 'Analysis Sub-State: Unloading State'),
             'reaming': ReamingState(self, gui_client_socket, name = 'Analysis Sub-State: Reaming State'),
-            # 'moving': MovingState(self, gui_client_socket, name = 'Analysis Sub-State: Moving State')
+            'error': ErrorState(self, gui_client_socket, name = 'Analysis Sub-State: Error State'),
+            'analysis idle': AnalysisIdleState(self, gui_client_socket, name = 'Analysis Sub-State: Idle State'),
         }
-        self.current_sub_state = self.sub_states['initializing'] # can be thought of as context_sub_state
+        self.current_sub_state = self.sub_states['analysis idle'] # current_sub_state can be thought of as context_sub_state
         self.is_active = False  # Initialize the is_active attribute to control process initiation
+        self.all_spokes_completed = False
+        self.initialization_complete = False  #initialization flag to help in tracking if initialization has run already
         self.spoke_counter = 1  # Add a spoke counter
         self.total_spokes = 8  # Default value, will be updated based on the selected wagon wheel
-        self.initialization_complete = False  #initialization flag to help in tracking if initialization has run already
+        self.vacuum_error_flag = False  # Vacuum error flag
 
     def enter_state(self):
         super().enter_state()
+        print("Analysis State enter_state method called")
         global wagon_wheel
-        self.current_sub_state = self.sub_states['initializing'] #Every time analysis state is entered it always starts in initializing state
-        self.current_sub_state.enter_state()
         self.is_active = True
         self.spoke_counter = 1  # Reset spoke counter when entering the state
         self.total_spokes = 8 if wagon_wheel == 8 else 16  # Set total spokes based on selected wagon wheel
-        self.start_analysis_processes()
-
-    def start_analysis_processes(self):
-        print("Starting analysis process")
-        if not self.initialization_complete:
-            self.current_sub_state = self.sub_states['initializing']
-        else:
-            self.current_sub_state = self.sub_states['loading']
-        self.current_sub_state.enter_state()
+        self.gui_client_socket.send(str(self.spoke_counter).encode(ENCODER))  # send current spoke to GUI
+        self.change_sub_state('analysis idle') #Every time analysis state is entered it always starts in analysis idle state
 
     def handle(self, data): #This is where you put what will occur when a certain message is sent to server when code is in this current state
         #Handles commands specific to analysis state
@@ -557,24 +555,61 @@ class AnalysisState(State):
     
     def change_sub_state(self, sub_state_key):
         if sub_state_key in self.sub_states:
+            if sub_state_key == 'error':
+                self.vacuum_error_flag = True  # Set error flag when transitioning to error state
+                X_Actuate_Response = send_receive_PLC(ActuatePullSample) #tell motor to pull away if vacuum error occurs
+                print(X_Actuate_Response)
             self.current_sub_state = self.sub_states[sub_state_key]
             self.current_sub_state.enter_state()
 
     def next_spoke(self):
-        self.spoke_counter += 1
-        self.gui_client_socket.send(str(self.spoke_counter).encode(ENCODER))  # send current spoke to GUI
-        if self.spoke_counter > self.total_spokes:
-            print("All spokes analyzed. Transitioning to Idle State...")
-            self.context.change_state('idle')
-            self.is_active = False
-            self.initialization_complete = False  # Optionally reset initialization when complete
-            send_receive_PLC("Wagon Wheel Analysis Completed")
-        else:
+        if self.spoke_counter < self.total_spokes:
+            self.spoke_counter += 1
+            self.gui_client_socket.send(str(self.spoke_counter).encode(ENCODER))  # send current spoke to GUI
             print(f"Moving to next spoke: {self.spoke_counter}/{self.total_spokes}")
             self.current_sub_state = self.sub_states['loading']
             self.current_sub_state.enter_state()
+        else:
+            print("All spokes analyzed. Transitioning to Idle State...")
+            self.is_active = False  
+            self.initialization_complete = False # Optionally reset initialization when complete
+            self.all_spokes_completed = True
+            send_receive_PLC("Wagon Wheel Analysis Completed")  # Uncomment if needed
+            self.context.change_state('idle')
+            self.current_sub_state = self.sub_states['analysis idle']
+            self.current_sub_state.enter_state()
+            return
 
 ########################################  SUB-STATES OF ANALYSIS STATE  ######################################## 
+class AnalysisIdleState(State):
+    def __init__(self, context, gui_client_socket, name):
+        super().__init__(context, gui_client_socket, name)
+
+    def enter_state(self):
+        super().enter_state() #executes enter_state() method in base state class
+        if not self.context.all_spokes_completed:
+            self.start_analysis_processes()
+        else:
+            print("LAST LINE: Analysis Substate in Idle")
+            self.context.all_spokes_completed = False  # Reset Completed spokes flag
+            return
+            #Code should stop here when all spokes done
+
+    def start_analysis_processes(self):
+        print("Analysis Idle State: starting_analysis_process method called")
+        if not self.context.initialization_complete:
+            self.context.current_sub_state = self.context.sub_states['initializing']
+        else:
+            print("Moving to loading state -> called from start_analysis_process method")
+            self.context.current_sub_state = self.context.sub_states['loading']
+        self.context.current_sub_state.enter_state()
+
+    def handle(self, data): # Different commands that will execute when specific commands are sent to server instance while code in idle state
+        #Handles commands specific to idle state
+        print(f"Analysis Idle State: Received '{data}'")
+    
+
+##############################################
 class InitializingState(State):
     def enter_state(self):
         super().enter_state()
@@ -619,7 +654,7 @@ class InitializingState(State):
     def transition_sub_states(self):
         # Assuming the next state after initialization is 'loading'
         print("Transitioning to Loading State...")
-        time.sleep(2)
+        time.sleep(1)
         self.context.change_sub_state('loading')
  
 ############################################
@@ -631,108 +666,187 @@ class LoadingState(State):
         self.move_wagon_wheel()
 
     def handle(self, data):
-        print(f"Sent from main GUI: {data}")
-        if data == 'try again':
-            self.handle_try_again()
-            print("Retrying Sample Load")
-        if data == 'skip spoke': 
-            self.handle_skip_spoke()
-            print("Moving onto next spoke")
-        if data == 'abort':
-            self.handle_abort()
-            print("Aborting Process")
+        print(f"Sent from Error GUI: {data}")
 
     def move_wagon_wheel(self):
+        if self.context.vacuum_error_flag:
+            print("Error flag is set, exiting move_wagon_wheel")
+            return  # Exit if error state is active
         WW_movement_response = send_receive_PLC(f"MoveToSpoke{self.context.spoke_counter}")
-        # if WW_movement_response == f"MovedToSpoke{self.context.spoke_counter}":
-        #     self.execute_load_samples1()
-        # else:
-        #     print("RIP")
-        self.execute_load_samples1()
+        if WW_movement_response == f"MovedToSpoke{self.context.spoke_counter}":
+            self.execute_load_samples1()
+            return
+        else:
+            print("RIP")
+        print("Moving wagon wheel samples method running...")
+        # self.execute_load_samples1()
+        # return
+
 
     def execute_load_samples1(self):
+        if self.context.vacuum_error_flag:
+            print("Error flag is set, exiting execute_load_samples1")
+            return  # Exit if not the current sub state
         #Sends PLC a message to move the sample into GDS anode only after this command is called for
         X_Actuate_Response = send_receive_PLC(ActuatePushSample)
         print(X_Actuate_Response)
+        #print(f"Vacuum Error_Flag = {self.context.context.error_flag}")
         print("Commencing sample step 1...")
         LSS1_response = send_receive_CORNERSTONE(LSS1)
         LSS1_message_flag = checkError(LSS1_response)
         if LSS1_message_flag:
             error_detected = False
             while True:
+                if self.context.vacuum_error_flag:
+                    print("Exiting current sub state : Loading")
+                    return  # Exit if not the current sub-state
                 SampleLoadState_response = send_receive_CORNERSTONE(SampleLoadState_message) #Sends query message to see if step is complete
                 LSS1_SetKey = checkStringValue(SampleLoadState_response)
                 time.sleep(1)
                 if LSS1_SetKey == "Error: pressure evacuation timeout":
                     if not error_detected:
-                        self.gui_client_socket.send("Vacuum Error".encode(ENCODER)) #tell gui.py to open vacuum error gui
                         error_detected = True
+                        self.context.change_sub_state('error')  #vacuum error flag changed to True in this method
+                        return
                     break
-            if not error_detected:
-                self.execute_load_samples2()
+                elif LSS1_SetKey == "Evacuated":
+                    if not error_detected:
+                        self.execute_load_samples2()
+                        return
+                    break
+            print("LSS1 While loop broke")
+            #print("This where need to stop")
+        else:
+            print("We are failures")
+
 
     def execute_load_samples2(self):
+        if self.context.vacuum_error_flag:
+            print("Error flag is set, exiting execute_load_samples2")
+            return  # Exit if not the current sub state
+        #print(f"Vacuum Error_Flag = {self.context.context.error_flag}")
         print("Commencing sample step 2...")
         LSS2_response = send_receive_CORNERSTONE(LSS2)
         LSS2_message_flag = checkError(LSS2_response)
         if LSS2_message_flag:
+            error_detected = False
             while True:
+                if self.context.vacuum_error_flag:
+                    print("Exiting current sub state : Loading")
+                    return  # Exit if not the current sub-state
                 SampleLoadState_response = send_receive_CORNERSTONE(SampleLoadState_message) #Sends query message to see if step is complete
                 LSS2_SetKey = checkStringValue(SampleLoadState_response)
                 time.sleep(1)
                 if LSS2_SetKey == "Error: depressurizing to 0.1 torr timeout":
-                    # POSSIBLY NEED TO PASS gui_client_socket
-                    self.gui_client_socket.send("Vacuum Error".encode(ENCODER)) #tell gui.py to open vacuum error gui
+                    if not error_detected:
+                        error_detected = True
+                        self.context.change_sub_state('error')  #vacuum error flag changed to True in this method
+                        return
+                    break
                 elif LSS2_SetKey == "Clamped - Low Pressure":
                     print("Commencing load sample step 3...")
-                    #WILL NEED TO SEND PLC A COMMAND TO UNDO THE X-AXIS
-                    send_receive_PLC(ActuatePullSample)
+                    X_Actuate_Response = send_receive_PLC(ActuatePullSample)
+                    print(X_Actuate_Response)
                     break
-            self.execute_load_samples3()
+            print("LSS2 While loop broke")
+            #print(f"Vacuum Error_Flag 2 = {self.context.vacuum_error_flag}")
+            if not error_detected:
+                self.execute_load_samples3()
+                return
+            #print("This where need to stop")
+        else:
+            print("We are failures")
 
-    def execute_load_samples3(self): #Will not have an error as suctiuon has already been created
+
+    def execute_load_samples3(self):
+        if self.context.vacuum_error_flag:
+            print("Error flag is set, exiting execute_load_samples3")
+            return  # Exit if not the current sub state
+        #print(f"Vacuum Error_Flag = {self.context.context.error_flag}")
         print("Commencing sample step 3...")
         LSS3_response = send_receive_CORNERSTONE(LSS3)
         LSS3_message_flag = checkError(LSS3_response)
         if LSS3_message_flag:
+            error_detected = False
             while True:
+                if self.context.vacuum_error_flag:
+                    print("Exiting current sub state : Loading")
+                    return  # Exit if not the current sub-state
                 SampleLoadState_response = send_receive_CORNERSTONE(SampleLoadState_message) #Sends query message to see if step is complete
                 LSS3_SetKey = checkStringValue(SampleLoadState_response)
                 time.sleep(1)
                 if LSS3_SetKey == "Error: depressurizing to 0.1 torr timeout":
-                    # POSSIBLY NEED TO PASS gui_client_socket
-                    self.gui_client_socket.send("Vacuum Error".encode(ENCODER)) #tell gui.py to open vacuum error gui
+                    if not error_detected:
+                        error_detected = True
+                        self.context.change_sub_state('error')  #vacuum error flag changed to True in this method
+                        return
+                    break
                 elif LSS3_SetKey == "Loaded":
                     print("Sample Loaded, Commencing Sample Analysis...")
-                    #WILL NEED TO SEND PLC A COMMAND TO UNDO THE X-AXIS
                     break
-            #LOADING STATE COMPLETE, EXECUTE SAMPLE ANALYSIS
-            self.transition_sub_states()
+            print("LSS3 While loop broke")
+            #print(f"Vacuum Error_Flag 2 = {self.context.vacuum_error_flag}")
+            if not error_detected:
+                self.transition_sub_states()
+                return
+            #print("This where need to stop")
+        else:
+            print("We are failures")
             
 
     def transition_sub_states(self):
+        if self.context.vacuum_error_flag:
+            print("Error flag is set, exiting transition_sub_states")
+            return  # Exit if not the current sub-state
         print("Transitioning to Sample Analyze State...")
-        time.sleep(2)
+        time.sleep(1)
         self.context.change_sub_state('sample analyzing')
-    
-    def handle_try_again(self):
-        print("Handling 'try again' command...")
-        X_Pull_Actuate_Response = send_receive_PLC(ActuatePullSample)
-        print(X_Pull_Actuate_Response)
-        self.execute_load_samples1()
-
-    def handle_skip_spoke(self):
-        print("Handling 'skip spoke' command...")
-        X_Pull_Actuate_Response = send_receive_PLC(ActuatePullSample)
-        print(X_Pull_Actuate_Response)
-        self.context.next_spoke()
-
-    def handle_abort(self):
-        print("Handling 'abort' command...")
-        X_Pull_Actuate_Response = send_receive_PLC(ActuatePullSample)
-        print(X_Pull_Actuate_Response)
-        self.context.change_state('idle')
         
+
+#############################################
+class ErrorState(State):
+    def __init__(self, context, gui_client_socket, name):
+        super().__init__(context, gui_client_socket, name)
+    
+    def enter_state(self):
+        super().enter_state()
+        self.context.context.error_flag = True
+        # Display error GUI
+        self.gui_client_socket.send("Vacuum Error".encode(ENCODER))
+        
+    def handle(self, data):
+        print(f"Error State: Received '{data}'")
+        if data == "try again":
+            self.context.vacuum_error_flag = False  # Clear error flag
+            self.context.change_sub_state('loading')
+        elif data == "skip spoke":
+            self.context.vacuum_error_flag = False  # Clear error flag
+            self.context.next_spoke()
+        elif data == "abort":
+            self.context.vacuum_error_flag = False  # Clear error flag
+            self.context.spoke_counter = 0
+            self.gui_client_socket.send(str(self.context.spoke_counter).encode(ENCODER))  # send current spoke to GUI
+            send_receive_PLC("Vacuum Error: Aborting Process")
+            self.context.context.change_state('idle')
+            self.context.current_sub_state = self.context.sub_states['analysis idle']
+    
+    # def handle_try_again(self):
+    #     print("Handling 'try again' command...")
+    #     # UNCOMMENT LATER X_Pull_Actuate_Response = send_receive_PLC(ActuatePullSample)
+    #     # UNCOMMENT LATER print(X_Pull_Actuate_Response)
+    #     self.context.change_sub_state('loading')
+
+    # def handle_skip_spoke(self):
+    #     print("Handling 'skip spoke' command...")
+    #     # UNCOMMENT LATER X_Pull_Actuate_Response = send_receive_PLC(ActuatePullSample)
+    #     # UNCOMMENT LATER print(X_Pull_Actuate_Response)
+    #     self.context.next_spoke()
+
+    # def handle_abort(self):
+    #     print("Handling 'abort' command...")
+    #     # UNCOMMENT LATER X_Pull_Actuate_Response = send_receive_PLC(ActuatePullSample)
+    #     # UNCOMMENT LATER print(X_Pull_Actuate_Response)
+    #     self.context.change_state('idle')
 
 #############################################
 class SampleAnalysisState(State):
@@ -758,13 +872,14 @@ class SampleAnalysisState(State):
                 elif AnalysisRunning_state == "false": #Running complete
                     print('Analysis Complete, Commencing unloading ...')
                     break
-            self.transition_sub_states()
+            return
 
     
     def transition_sub_states(self):
         print("Transitioning to Unloading State...")
-        time.sleep(2)
+        time.sleep(1)
         self.context.change_sub_state('unloading')
+        return
 
 ##########################################
 class UnloadingState(State):
@@ -799,16 +914,18 @@ class UnloadingState(State):
                 time.sleep(1)
                 if USS2_SetKey == "Released":
                     print("Moving Hardware out of the way")
-                    if wagon_wheel == 16:
-                        send_receive_PLC(MoveToSafeArea16)
-                    else:  #Current wagon wheel is 8 spoke
-                        send_receive_PLC(MoveToSafeArea8)
-                    break
+                    break  #COMMENT LATER
+                    # UNCOMMENT LATER
+                    # if wagon_wheel == 16:
+                    #     send_receive_PLC(MoveToSafeArea16)
+                    # else:  #Current wagon wheel is 8 spoke
+                    #     send_receive_PLC(MoveToSafeArea8)
+                    # break
             self.transition_sub_states()
     
     def transition_sub_states(self):
         print("Transitioning to Reaming State...")
-        time.sleep(2)
+        time.sleep(1)
         self.context.change_sub_state('reaming')
 
 ##########################################
@@ -833,8 +950,13 @@ class UnloadingState(State):
 class ReamingState(State):
     def enter_state(self):
         super().enter_state()
+        if self.context.total_spokes == 8:
+            move_away_response = send_receive_PLC(MoveToSafeArea8)
+            print(move_away_response)
+        else:
+            move_away_response = send_receive_PLC(MoveToSafeArea16)
+            print(move_away_response)
         self.ream_anode()
-        self.transition_sub_states()
         
     def handle(self, data):
         print(f"Sent from main GUI: {data}")
@@ -853,9 +975,11 @@ class ReamingState(State):
                 elif Reaming_state == "false": #Running complete
                     break
             self.transition_sub_states()
+            return
 
     def transition_sub_states(self):
         self.context.next_spoke()
+        return
         
 
 ##########################################################################################################
@@ -871,6 +995,7 @@ class Context:
         self.state = self.states['idle']
 
     def change_state(self, trans_state_name):  # method that dictates transition between analysis, calibration, and idle states
+        self.error_flag = False  # Reset error flag on state change
         # Conditions to allow state transition
         if trans_state_name == 'idle':
             print(f"Context: Transitioning from {self.state.name} to {trans_state_name} state.")
@@ -890,22 +1015,6 @@ class Context:
         else:
             print("Transition not allowed: Must return to Idle state first or only transition to Idle from current state.")
     
-    # def change_state(self, trans_state_name): # method that dictates transition between analysis, calibration, and idle states 
-    #     # Conditions to allow state transition
-    #     if self.state.name == "Idle State" and (trans_state_name == 'calibration' or trans_state_name == 'analysis'):
-    #         print(f"Context: Transitioning from {self.state.name} to {trans_state_name} state.")
-    #         self.state = self.states[trans_state_name]
-    #         self.state.enter_state()
-    #     elif (self.state.name == "Calibration State" or self.state.name == "Analysis State") and trans_state_name == 'idle':
-    #         if self.state.name == "Analysis State" and trans_state_name == "analysis": #if press analysis button twice doesn't let you change states
-    #             print("Already in Analysis State...")
-    #         else:
-    #             print(f"Context: Transitioning from {self.state.name} to {trans_state_name} state.")
-    #             self.state = self.states[trans_state_name]
-    #             self.state.enter_state()
-    #     else:
-    #         print("Transition not allowed: Must return to Idle state first or only transition to Idle from current state.")
-
     def handle(self, data):
         self.state.handle(data)
 

@@ -183,6 +183,7 @@ state_response_map = {
     'Unload Sample Step 2': '<StringValue ErrorCode="0" ErrorMessage="Success" Name="Sample Load State" Value="Released" Cookie="StringValue" />'
 }
 
+
 # Define message-response mapping
 message_response_map = { 
     '<Logon User="156a" Password="156a156a"/>': '<Logon ErrorCode="0" ErrorMessage="Success" Cookie="Logon" />',
@@ -238,12 +239,12 @@ def handle_client_connection(client_socket):
                         ream_anode_state = 1
                     elif ream_anode_state == 1:
                         # Second part of the Ream Anode sequence
-                        time.sleep(5)
+                        time.sleep(1)
                         response_message = '<Sequence ErrorCode="0" ErrorMessage="Success" Name="Ream Anode" Running="false" LastReturnResult="" Cookie="Sequence" />'
                         ream_anode_state = 0
                 elif incoming_message.startswith('<Sequence') and 'Name="Ream Anode"' in incoming_message:
                     if ream_anode_state == 1:
-                        time.sleep(5)
+                        time.sleep(1)
                         response_message = '<Sequence ErrorCode="0" ErrorMessage="Success" Name="Ream Anode" Running="false" LastReturnResult="" Cookie="Sequence" />'
                         ream_anode_state = 0
                     else:
@@ -255,7 +256,7 @@ def handle_client_connection(client_socket):
                         response_message = '<Error>State not recognized</Error>'
                 elif incoming_message == '<Prerequisite Key="Analyzing" Cookie="Prerequisite" Culture="en-US" />':
                     if analyze_in_progress:
-                        time.sleep(12)  # Simulate analysis time
+                        time.sleep(2)  # Simulate analysis time
                         analyze_in_progress = False
                         response_message = '<Prerequisite ErrorCode="0" ErrorMessage="Success" Name="Analyzing" Value="false" Cookie="Prerequisite" />'
                     else:
@@ -273,7 +274,7 @@ def handle_client_connection(client_socket):
             # Send the response message
             if response_message is not None:
                 if not (incoming_message == '<Prerequisite Key="Analyzing" Cookie="Prerequisite" Culture="en-US" />' and analyze_in_progress):
-                    time.sleep(2)  # Introduce a 2-second delay for most messages
+                    time.sleep(1)  # Introduce a 2-second delay for most messages
                 encoded_response = response_message.encode(ENCODER)
                 response_length = len(encoded_response)
                 packed_length = struct.pack('<i', response_length)

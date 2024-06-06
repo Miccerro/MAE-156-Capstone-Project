@@ -45,6 +45,8 @@ def listen_for_server_messages():
             print("Error receiving data:", e)
             break
 
+
+
 # def listen_for_server_messages():
 #     while True:
 #         try:
@@ -406,6 +408,7 @@ if __name__ == "__main__":
     ##################### ERROR GUI Function to call upon when vacuum error occurs #######################
     def open_error_window():
         if hasattr(open_error_window, 'window') and open_error_window.window.winfo_exists():
+            print("Error window already open")
             return  # Error window is already open
 
         open_error_window.window = Toplevel(window)
@@ -414,6 +417,7 @@ if __name__ == "__main__":
         open_error_window.window.configure(bg="#1F1F1F")
 
         def close_error_window():
+            print("Closing error window")
             open_error_window.window.destroy()
 
         def handle_error_response(command):
@@ -421,6 +425,12 @@ if __name__ == "__main__":
             send_data(command)
             close_error_window()  # Close the error window after sending command
 
+        # Override the close event to prevent closing the error window
+        def on_close():
+            pass  # Do nothing to prevent closing
+
+        open_error_window.window.protocol("WM_DELETE_WINDOW", on_close)  # Override the close button
+        
         # Create a new canvas specifically for the error window
         error_canvas = Canvas(open_error_window.window, bg="#1F1F1F", height=376, width=303, bd=0, highlightthickness=0, relief="ridge")
         error_canvas.place(x=0, y=0)
@@ -459,16 +469,16 @@ if __name__ == "__main__":
             font=("MontserratRoman Light", 18 * -1)
         )
 
-        error_canvas.create_image(208.0, 103.0, image=open_error_window.image_image_3e)
+        # error_canvas.create_image(208.0, 103.0, image=open_error_window.image_image_3e)
 
-        error_canvas.create_text(
-            205.0,
-            96.0,
-            anchor="nw",
-            text="1\n",
-            fill="#006262",
-            font=("RobotoRoman Light", 12 * -1)
-        )
+        # error_canvas.create_text(
+        #     205.0,
+        #     96.0,
+        #     anchor="nw",
+        #     text="1\n",
+        #     fill="#006262",
+        #     font=("RobotoRoman Light", 12 * -1)
+        #)
 
         error_canvas.create_text(
             81.0,
@@ -537,318 +547,6 @@ if __name__ == "__main__":
             width=102.0,
             height=30.0
         )
-
-
-
-    # def open_error_window():
-    #     if hasattr(open_error_window, 'window') and open_error_window.window.winfo_exists():
-    #         return  # Error window is already open
-
-    #     open_error_window.window = Toplevel(window)
-    #     open_error_window.window.title("API ERROR")
-    #     open_error_window.window.geometry("303x376")
-    #     open_error_window.window.configure(bg="#1F1F1F")
-
-    #     def close_error_window():
-    #         open_error_window.window.destroy()
-
-    #     def handle_error_response(command):
-    #         print(f"Sending {command} to the server...")
-    #         send_data(command)
-    #         close_error_window()  # Close the error window after sending command
-
-    #     # Create a new canvas specifically for the error window
-    #     error_canvas = Canvas(open_error_window.window, bg="#1F1F1F", height=376, width=303, bd=0, highlightthickness=0, relief="ridge")
-    #     error_canvas.place(x=0, y=0)
-    #     error_canvas.create_rectangle(
-    #         0.0,
-    #         0.0,
-    #         303.0,
-    #         61.0,
-    #         fill="#B95050",
-    #         outline="")
-
-    #     image_image_1e = PhotoImage(
-    #         file=relative_to_assets("image_1e.png"))
-    #     image_1e = error_canvas.create_image(
-    #         151.0,
-    #         103.0,
-    #         image=image_image_1e
-    #     )
-
-    #     image_image_2e = PhotoImage(
-    #         file=relative_to_assets("image_2e.png"))
-    #     image_2e = error_canvas.create_image(
-    #         151.0,
-    #         260.0,
-    #         image=image_image_2e
-    #     )
-
-    #     error_canvas.create_text(
-    #         70.0,
-    #         19.0,
-    #         anchor="nw",
-    #         text="ERROR: Vacuum Failed",
-    #         fill="#FFFFFF",
-    #         font=("MontserratRoman Light", 18 * -1)
-    #     )
-
-    #     image_image_3e = PhotoImage(
-    #         file=relative_to_assets("image_3e.png"))
-    #     image_3e = error_canvas.create_image(
-    #         208.0,
-    #         103.0,
-    #         image=image_image_3e
-    #     )
-
-    #     error_canvas.create_text(
-    #         205.0,
-    #         96.0,
-    #         anchor="nw",
-    #         text="1\n",
-    #         fill="#006262",
-    #         font=("RobotoRoman Light", 12 * -1)
-    #     )
-
-    #     error_canvas.create_text(
-    #         81.0,
-    #         96.0,
-    #         anchor="nw",
-    #         text="Failure on Spoke: ",
-    #         fill="#FFFFFF",
-    #         font=("MontserratRoman Light", 12 * -1)
-    #     )
-
-    #     image_image_4e = PhotoImage(
-    #         file=relative_to_assets("image_4e.png"))
-    #     image_4e = error_canvas.create_image(
-    #         30.0,
-    #         31.0,
-    #         image=image_image_4e
-    #     )
-
-    #     error_canvas.create_text(
-    #         29.0,
-    #         146.0,
-    #         anchor="nw",
-    #         text="Do you wish to:",
-    #         fill="#FFFFFF",
-    #         font=("MontserratRoman Light", 12 * -1)
-    #     )
-
-    #     ##### TRY AGAIN Button #####
-    #     button_image_1e = PhotoImage(
-    #         file=relative_to_assets("button_1e.png"))
-    #     button_1e = Button(
-    #         open_error_window.window,
-    #         image=button_image_1e,
-    #         borderwidth=0,
-    #         highlightthickness=0,
-    #         command=lambda: handle_error_response("try again"),
-    #         relief="flat"
-    #     )
-    #     button_1e.place(
-    #         x=100.0,
-    #         y=192.0,
-    #         width=102.0,
-    #         height=30.0
-    #     )
-
-    #     #### SKIP SPOKE button ####
-    #     button_image_2e = PhotoImage(
-    #         file=relative_to_assets("button_2e.png"))
-    #     button_2e = Button(
-    #         open_error_window.window,
-    #         image=button_image_2e,
-    #         borderwidth=0,
-    #         highlightthickness=0,
-    #         command=lambda: handle_error_response("skip spoke"),
-    #         relief="flat"
-    #     )
-    #     button_2e.place(
-    #         x=100.0,
-    #         y=246.0,
-    #         width=102.0,
-    #         height=30.0
-    #     )
-
-    #     #### ABORT Button ####
-    #     button_image_3e = PhotoImage(
-    #         file=relative_to_assets("button_3e.png"))
-    #     button_3e = Button(
-    #         open_error_window.window,
-    #         image=button_image_3e,
-    #         borderwidth=0,
-    #         highlightthickness=0,
-    #         command=lambda: handle_error_response("abort"),
-    #         relief="flat",
-    #     )
-    #     button_3e.place(
-    #         x=100.0,
-    #         y=300.0,
-    #         width=102.0,
-    #         height=30.0
-    #     )
-
-### DEBUGGING ERROR GUI ###
-    # def open_error_window():
-    #     if hasattr(open_error_window, 'window') and open_error_window.window.winfo_exists():
-    #         print("Error window already open")
-    #         return  # Error window is already open
-
-    #     open_error_window.window = Toplevel(window)
-    #     open_error_window.window.title("API ERROR")
-    #     open_error_window.window.geometry("303x376")
-    #     open_error_window.window.configure(bg="#1F1F1F")
-
-    #     def close_error_window():
-    #         print("Closing error window")
-    #         open_error_window.window.destroy()
-
-    #     def handle_error_response(command):
-    #         print(f"Sending {command} to the server...")
-    #         send_data(command)
-    #         close_error_window()  # Close the error window after sending command
-
-    #     # Create a new canvas specifically for the error window
-    #     error_canvas = Canvas(open_error_window.window, bg="#1F1F1F", height=376, width=303, bd=0, highlightthickness=0, relief="ridge")
-    #     error_canvas.place(x=0, y=0)
-    #     error_canvas.create_rectangle(
-    #         0.0,
-    #         0.0,
-    #         303.0,
-    #         61.0,
-    #         fill="#B95050",
-    #         outline="")
-
-    #     print("Creating images for error window")
-    #     image_image_1e = PhotoImage(
-    #         file=relative_to_assets("image_1e.png"))
-    #     image_1e = error_canvas.create_image(
-    #         151.0,
-    #         103.0,
-    #         image=image_image_1e
-    #     )
-
-    #     image_image_2e = PhotoImage(
-    #         file=relative_to_assets("image_2e.png"))
-    #     image_2e = error_canvas.create_image(
-    #         151.0,
-    #         260.0,
-    #         image=image_image_2e
-    #     )
-
-    #     error_canvas.create_text(
-    #         70.0,
-    #         19.0,
-    #         anchor="nw",
-    #         text="ERROR: Vacuum Failed",
-    #         fill="#FFFFFF",
-    #         font=("MontserratRoman Light", 18 * -1)
-    #     )
-
-    #     image_image_3e = PhotoImage(
-    #         file=relative_to_assets("image_3e.png"))
-    #     image_3e = error_canvas.create_image(
-    #         208.0,
-    #         103.0,
-    #         image=image_image_3e
-    #     )
-
-    #     error_canvas.create_text(
-    #         205.0,
-    #         96.0,
-    #         anchor="nw",
-    #         text="1\n",
-    #         fill="#006262",
-    #         font=("RobotoRoman Light", 12 * -1)
-    #     )
-
-    #     error_canvas.create_text(
-    #         81.0,
-    #         96.0,
-    #         anchor="nw",
-    #         text="Failure on Spoke: ",
-    #         fill="#FFFFFF",
-    #         font=("MontserratRoman Light", 12 * -1)
-    #     )
-
-    #     image_image_4e = PhotoImage(
-    #         file=relative_to_assets("image_4e.png"))
-    #     image_4e = error_canvas.create_image(
-    #         30.0,
-    #         31.0,
-    #         image=image_image_4e
-    #     )
-
-    #     error_canvas.create_text(
-    #         29.0,
-    #         146.0,
-    #         anchor="nw",
-    #         text="Do you wish to:",
-    #         fill="#FFFFFF",
-    #         font=("MontserratRoman Light", 12 * -1)
-    #     )
-
-    #     print("Creating buttons for error window")
-    #     ##### TRY AGAIN Button #####
-    #     button_1e = Button(
-    #         open_error_window.window,
-    #         text="Try Again",
-    #         borderwidth=0,
-    #         highlightthickness=0,
-    #         command=lambda: handle_error_response("try again"),
-    #         relief="flat",
-    #         bg="#C3C3C3",
-    #         fg="white"
-    #     )
-    #     button_1e.place(
-    #         x=100.0,
-    #         y=192.0,
-    #         width=102.0,
-    #         height=30.0
-    #     )
-    #     print("Button 'Try Again' created and placed")
-
-    #     #### SKIP SPOKE button ####
-    #     button_2e = Button(
-    #         open_error_window.window,
-    #         text="Skip Spoke",
-    #         borderwidth=0,
-    #         highlightthickness=0,
-    #         command=lambda: handle_error_response("skip spoke"),
-    #         relief="flat",
-    #         bg="#C3C3C3",
-    #         fg="black"
-    #     )
-    #     button_2e.place(
-    #         x=100.0,
-    #         y=246.0,
-    #         width=102.0,
-    #         height=30.0
-    #     )
-    #     print("Button 'Skip Spoke' created and placed")
-
-    #     #### ABORT Button ####
-    #     button_3e = Button(
-    #         open_error_window.window,
-    #         text="Abort",
-    #         borderwidth=0,
-    #         highlightthickness=0,
-    #         command=lambda: handle_error_response("abort"),
-    #         relief="flat",
-    #         bg="#C3C3C3",
-    #         fg="white"
-    #     )
-    #     button_3e.place(
-    #         x=100.0,
-    #         y=300.0,
-    #         width=102.0,
-    #         height=30.0
-    #     )
-    #     print("Button 'Abort' created and placed")
-
-
 
     # Start the listener thread for receiving server messages
     thread = threading.Thread(target=listen_for_server_messages)
