@@ -164,24 +164,24 @@ AddSample16Spoke_XML = '''
 </AddSamples>
 '''
 
-# # Define state-based response mapping NO VACUUM ERROR
-# state_response_map = {
-#     'Load Sample Step 1': '<StringValue ErrorCode="0" ErrorMessage="Success" Name="Sample Load State" Value="Evacuated" Cookie="StringValue" />',
-#     'Load Sample Step 2': '<StringValue ErrorCode="0" ErrorMessage="Success" Name="Sample Load State" Value="Clamped - Low Pressure" Cookie="StringValue" />',
-#     'Load Sample Step 3': '<StringValue ErrorCode="0" ErrorMessage="Success" Name="Sample Load State" Value="Loaded" Cookie="StringValue" />',
-#     'Unload Sample Step 1': '<StringValue ErrorCode="0" ErrorMessage="Success" Name="Sample Load State" Value="Unclamped" Cookie="StringValue" />',
-#     'Unload Sample Step 2': '<StringValue ErrorCode="0" ErrorMessage="Success" Name="Sample Load State" Value="Released" Cookie="StringValue" />'
-# }
-
-
-# Define state-based response mapping WITH VACUUM ERROR
+# Define state-based response mapping NO VACUUM ERROR
 state_response_map = {
-    'Load Sample Step 1': '<StringValue ErrorCode="0" ErrorMessage="Success" Name="Sample Load State" Value="Error: pressure evacuation timeout" Cookie="StringValue" />',
+    'Load Sample Step 1': '<StringValue ErrorCode="0" ErrorMessage="Success" Name="Sample Load State" Value="Evacuated" Cookie="StringValue" />',
     'Load Sample Step 2': '<StringValue ErrorCode="0" ErrorMessage="Success" Name="Sample Load State" Value="Clamped - Low Pressure" Cookie="StringValue" />',
     'Load Sample Step 3': '<StringValue ErrorCode="0" ErrorMessage="Success" Name="Sample Load State" Value="Loaded" Cookie="StringValue" />',
     'Unload Sample Step 1': '<StringValue ErrorCode="0" ErrorMessage="Success" Name="Sample Load State" Value="Unclamped" Cookie="StringValue" />',
     'Unload Sample Step 2': '<StringValue ErrorCode="0" ErrorMessage="Success" Name="Sample Load State" Value="Released" Cookie="StringValue" />'
 }
+
+
+# # Define state-based response mapping WITH VACUUM ERROR
+# state_response_map = {
+#     'Load Sample Step 1': '<StringValue ErrorCode="0" ErrorMessage="Success" Name="Sample Load State" Value="Error: pressure evacuation timeout" Cookie="StringValue" />',
+#     'Load Sample Step 2': '<StringValue ErrorCode="0" ErrorMessage="Success" Name="Sample Load State" Value="Clamped - Low Pressure" Cookie="StringValue" />',
+#     'Load Sample Step 3': '<StringValue ErrorCode="0" ErrorMessage="Success" Name="Sample Load State" Value="Loaded" Cookie="StringValue" />',
+#     'Unload Sample Step 1': '<StringValue ErrorCode="0" ErrorMessage="Success" Name="Sample Load State" Value="Unclamped" Cookie="StringValue" />',
+#     'Unload Sample Step 2': '<StringValue ErrorCode="0" ErrorMessage="Success" Name="Sample Load State" Value="Released" Cookie="StringValue" />'
+# }
 
 
 # Define message-response mapping

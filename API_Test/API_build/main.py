@@ -445,7 +445,12 @@ class IdleState(State):
         print(f"Idle State: Received '{data}'")
         if data == "calibration on":
             self.context.change_state('calibration')
-            send_receive_PLC('CalibrationOn') 
+            # print("Handle: before send CalibrationOn")
+            # PLC_calibration_response1 = send_receive_PLC('CalibrationOn') 
+            # print(PLC_calibration_response1)
+            # # PLC_calibration_response2 = listen_for_response()
+            # # print(PLC_calibration_response2)
+            # print("Handle End after listen for response 2")
         elif data == "Start Analysis Process": 
             self.context.change_state('analysis')
         elif data in ['8-Spoke Wagon Wheel Selected', '16-Spoke Wagon Wheel Selected']:
@@ -559,6 +564,8 @@ class AnalysisState(State):
                 self.vacuum_error_flag = True  # Set error flag when transitioning to error state
                 X_Actuate_Response = send_receive_PLC(ActuatePullSample) #tell motor to pull away if vacuum error occurs
                 print(X_Actuate_Response)
+                X_Actuate_Completion_Response = listen_for_response()
+                print(X_Actuate_Completion_Response)
             self.current_sub_state = self.sub_states[sub_state_key]
             self.current_sub_state.enter_state()
 
@@ -690,6 +697,8 @@ class LoadingState(State):
         #Sends PLC a message to move the sample into GDS anode only after this command is called for
         X_Actuate_Response = send_receive_PLC(ActuatePushSample)
         print(X_Actuate_Response)
+        X_Actuate_Completion_Response = listen_for_response()
+        print(X_Actuate_Completion_Response)
         #print(f"Vacuum Error_Flag = {self.context.context.error_flag}")
         print("Commencing sample step 1...")
         LSS1_response = send_receive_CORNERSTONE(LSS1)
@@ -747,6 +756,8 @@ class LoadingState(State):
                     print("Commencing load sample step 3...")
                     X_Actuate_Response = send_receive_PLC(ActuatePullSample)
                     print(X_Actuate_Response)
+                    X_Actuate_Completion_Response = listen_for_response()
+                    print(X_Actuate_Completion_Response)
                     break
             print("LSS2 While loop broke")
             #print(f"Vacuum Error_Flag 2 = {self.context.vacuum_error_flag}")
@@ -902,6 +913,7 @@ class UnloadingState(State):
                 if USS1_SetKey == "Unclamped":
                     break
             self.execute_unload_sample2()
+            return
 
     def execute_unload_sample2(self):
         print("Commencing UNLOAD sample step 2...")
@@ -913,15 +925,12 @@ class UnloadingState(State):
                 USS2_SetKey = checkStringValue(SampleLoadState_response)
                 time.sleep(1)
                 if USS2_SetKey == "Released":
-                    print("Moving Hardware out of the way")
-                    break  #COMMENT LATER
-                    # UNCOMMENT LATER
-                    # if wagon_wheel == 16:
-                    #     send_receive_PLC(MoveToSafeArea16)
-                    # else:  #Current wagon wheel is 8 spoke
-                    #     send_receive_PLC(MoveToSafeArea8)
-                    # break
+                    break
+                else:
+                    print('Damn RIP')
+                    break
             self.transition_sub_states()
+            return
     
     def transition_sub_states(self):
         print("Transitioning to Reaming State...")
@@ -950,6 +959,7 @@ class UnloadingState(State):
 class ReamingState(State):
     def enter_state(self):
         super().enter_state()
+        print("Sending PLC command to move out of the way for Reaming...")
         if self.context.total_spokes == 8:
             move_away_response = send_receive_PLC(MoveToSafeArea8)
             print(move_away_response)
