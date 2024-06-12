@@ -403,15 +403,15 @@ def Wagon_Wheel_Initialization(data):
     if data == '8-Spoke Wagon Wheel Selected':
         wagon_wheel = 8
         print("Sending 8-spoke selection to PLC...")
-        send_receive_PLC("Spokes8")
+        # send_receive_PLC("Spokes8")
     elif data == '16-Spoke Wagon Wheel Selected':
         wagon_wheel = 16
         print("Sending 16-spoke selection to PLC...")
-        send_receive_PLC("Spokes16")
+        # send_receive_PLC("Spokes16")
     else:
         # If no button is pressed, it defaults to 8 spokes
         print(f"No Wagon Wheel selection made yet, defaulting to {wagon_wheel}-spoke wheel.")
-        send_receive_PLC("Spokes8")
+        # send_receive_PLC("Spokes8")
 
 ################## Define State Classes ####################################################################
 
@@ -562,10 +562,10 @@ class AnalysisState(State):
         if sub_state_key in self.sub_states:
             if sub_state_key == 'error':
                 self.vacuum_error_flag = True  # Set error flag when transitioning to error state
-                X_Actuate_Response = send_receive_PLC(ActuatePullSample) #tell motor to pull away if vacuum error occurs
-                print(X_Actuate_Response)
-                X_Actuate_Completion_Response = listen_for_response()
-                print(X_Actuate_Completion_Response)
+                # X_Actuate_Response = send_receive_PLC(ActuatePullSample) #tell motor to pull away if vacuum error occurs
+                # print(X_Actuate_Response)
+                # X_Actuate_Completion_Response = listen_for_response()
+                # print(X_Actuate_Completion_Response)
             self.current_sub_state = self.sub_states[sub_state_key]
             self.current_sub_state.enter_state()
 
@@ -581,7 +581,7 @@ class AnalysisState(State):
             self.is_active = False  
             self.initialization_complete = False # Optionally reset initialization when complete
             self.all_spokes_completed = True
-            send_receive_PLC("Wagon Wheel Analysis Completed")  # Uncomment if needed
+            # send_receive_PLC("Wagon Wheel Analysis Completed")  # Uncomment if needed
             self.context.change_state('idle')
             self.current_sub_state = self.sub_states['analysis idle']
             self.current_sub_state.enter_state()
@@ -679,15 +679,15 @@ class LoadingState(State):
         if self.context.vacuum_error_flag:
             print("Error flag is set, exiting move_wagon_wheel")
             return  # Exit if error state is active
-        WW_movement_response = send_receive_PLC(f"MoveToSpoke{self.context.spoke_counter}")
-        if WW_movement_response == f"MovedToSpoke{self.context.spoke_counter}":
-            self.execute_load_samples1()
-            return
-        else:
-            print("RIP")
+        # WW_movement_response = send_receive_PLC(f"MoveToSpoke{self.context.spoke_counter}")
+        # if WW_movement_response == f"MovedToSpoke{self.context.spoke_counter}":
+        #     self.execute_load_samples1()
+            # return
+        # else:
+        #     print("RIP")
         print("Moving wagon wheel samples method running...")
-        # self.execute_load_samples1()
-        # return
+        self.execute_load_samples1()
+        return
 
 
     def execute_load_samples1(self):
@@ -695,10 +695,10 @@ class LoadingState(State):
             print("Error flag is set, exiting execute_load_samples1")
             return  # Exit if not the current sub state
         #Sends PLC a message to move the sample into GDS anode only after this command is called for
-        X_Actuate_Response = send_receive_PLC(ActuatePushSample)
-        print(X_Actuate_Response)
-        X_Actuate_Completion_Response = listen_for_response()
-        print(X_Actuate_Completion_Response)
+        # X_Actuate_Response = send_receive_PLC(ActuatePushSample)
+        # print(X_Actuate_Response)
+        # X_Actuate_Completion_Response = listen_for_response()
+        # print(X_Actuate_Completion_Response)
         #print(f"Vacuum Error_Flag = {self.context.context.error_flag}")
         print("Commencing sample step 1...")
         LSS1_response = send_receive_CORNERSTONE(LSS1)
@@ -754,10 +754,10 @@ class LoadingState(State):
                     break
                 elif LSS2_SetKey == "Clamped - Low Pressure":
                     print("Commencing load sample step 3...")
-                    X_Actuate_Response = send_receive_PLC(ActuatePullSample)
-                    print(X_Actuate_Response)
-                    X_Actuate_Completion_Response = listen_for_response()
-                    print(X_Actuate_Completion_Response)
+                    # X_Actuate_Response = send_receive_PLC(ActuatePullSample)
+                    # print(X_Actuate_Response)
+                    # X_Actuate_Completion_Response = listen_for_response()
+                    # print(X_Actuate_Completion_Response)
                     break
             print("LSS2 While loop broke")
             #print(f"Vacuum Error_Flag 2 = {self.context.vacuum_error_flag}")
@@ -795,7 +795,7 @@ class LoadingState(State):
                 elif LSS3_SetKey == "Loaded":
                     print("Sample Loaded, Commencing Sample Analysis...")
                     break
-            print("LSS3 While loop broke")
+            # print("LSS3 While loop broke")
             #print(f"Vacuum Error_Flag 2 = {self.context.vacuum_error_flag}")
             if not error_detected:
                 self.transition_sub_states()
@@ -837,7 +837,7 @@ class ErrorState(State):
             self.context.vacuum_error_flag = False  # Clear error flag
             self.context.spoke_counter = 0
             self.gui_client_socket.send(str(self.context.spoke_counter).encode(ENCODER))  # send current spoke to GUI
-            send_receive_PLC("Vacuum Error: Aborting Process")
+            # send_receive_PLC("Vacuum Error: Aborting Process")
             self.context.context.change_state('idle')
             self.context.current_sub_state = self.context.sub_states['analysis idle']
     
@@ -960,12 +960,12 @@ class ReamingState(State):
     def enter_state(self):
         super().enter_state()
         print("Sending PLC command to move out of the way for Reaming...")
-        if self.context.total_spokes == 8:
-            move_away_response = send_receive_PLC(MoveToSafeArea8)
-            print(move_away_response)
-        else:
-            move_away_response = send_receive_PLC(MoveToSafeArea16)
-            print(move_away_response)
+        # if self.context.total_spokes == 8:
+        #     move_away_response = send_receive_PLC(MoveToSafeArea8)
+        #     print(move_away_response)
+        # else:
+        #     move_away_response = send_receive_PLC(MoveToSafeArea16)
+        #     print(move_away_response)
         self.ream_anode()
         
     def handle(self, data):
