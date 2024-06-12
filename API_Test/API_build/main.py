@@ -1071,4 +1071,4 @@ if __name__ == "__main__":
     time.sleep(2)
 
     # Start the GUI
-    subprocess.Popen(["python", r"C:\Users\micah\OneDrive\MAE 156\Capstone Project\MAE-156-Capstone-Project\API_Test\API_build\GUI.py"])  #CHANGE TO ACTUAL PATH
+    subprocess.Popen(["python", r"C:\Users\emont\OneDrive\Desktop\MAE156A\MAE-156-Capstone-Project\API_Test\API_build\GUI.py"])  #CHANGE TO ACTUAL PATH
