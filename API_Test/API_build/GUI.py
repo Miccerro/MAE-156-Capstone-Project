@@ -11,7 +11,9 @@ BYTESIZE = 1024
 
 # Establish Pathing
 OUTPUT_PATH = Path(__file__).parent
-ASSETS_PATH = OUTPUT_PATH / Path(r"C:\Users\micah\OneDrive\MAE 156\Capstone Project\MAE-156-Capstone-Project\API_Test\API_build\assets\frame0")
+ASSETS_PATH = OUTPUT_PATH / Path(r"C:\Users\emont\OneDrive\Desktop\MAE156A\MAE-156-Capstone-Project\API_Test\API_build\assets\frame0")
+
+#(r"C:\Users\micah\OneDrive\MAE 156\Capstone Project\MAE-156-Capstone-Project\API_Test\API_build\assets\frame0")
 # Create client socket and connect to main.py server
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client_socket.connect((DESTINATION_IP, DESTINATION_PORT))

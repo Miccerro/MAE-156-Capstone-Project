@@ -188,7 +188,7 @@ state_response_map = {
 message_response_map = { 
     '<Logon User="156a" Password="156a156a"/>': '<Logon ErrorCode="0" ErrorMessage="Success" Cookie="Logon" />',
     AddSample8Spoke_XML : '<AddSamples ErrorCode="0" ErrorMessage="Success" Cookie="AddSamples" />',
-    AddSample8Spoke_XML : '<AddSamples ErrorCode="0" ErrorMessage="Success" Cookie="AddSamples" />',
+    AddSample16Spoke_XML : '<AddSamples ErrorCode="0" ErrorMessage="Success" Cookie="AddSamples" />',
     '<LastRemoteAddedSets Cookie="LastRemoteAddedSets" Culture="en-US" />': '<LastRemoteAddedSets ErrorCode="0" ErrorMessage="Success" Cookie="LastRemoteAddedSets"><Set Key="0000000000007987" /></LastRemoteAddedSets>',
     '<AssignNextToAnalyze SetKey="0000000000007987" ReplicateTag="0" />': '<AssignNextToAnalyze ErrorCode="0" ErrorMessage="Success" Cookie="AssignNextToAnalyze" />',
     '<AutoAnalyze State="DISABLED" />': '<AutoAnalyze ErrorCode="0" ErrorMessage="Success"/>',
